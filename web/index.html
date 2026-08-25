@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>百官行述 · 研究者图谱</title>
+<script src="/static/echarts.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f7f9; --panel:#ffffff; --line:#e3e6ea; --ink:#1c2430; --sub:#68727f;
+    --accent:#2456a6; --ok:#2e7d4f; --warn:#b96a00; --bad:#b3372f; --chip:#eef2f7;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+       background:var(--bg);color:var(--ink);font-size:14px}
+  header{background:var(--panel);border-bottom:1px solid var(--line);padding:10px 20px;
+         display:flex;align-items:center;gap:14px;position:sticky;top:0;z-index:9}
+  header h1{font-size:17px;margin:0;letter-spacing:1px}
+  header .sub{color:var(--sub);font-size:12px}
+  select,input[type=text]{border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-size:13px;
+         background:#fff;color:var(--ink)}
+  input[type=text]{width:240px}
+  nav{display:flex;gap:2px;margin-left:auto}
+  nav button{border:none;background:transparent;padding:8px 14px;font-size:14px;cursor:pointer;
+             color:var(--sub);border-radius:6px}
+  nav button.on{background:var(--chip);color:var(--ink);font-weight:600}
+  main{padding:16px 20px;max-width:1500px;margin:0 auto}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .panel h2{font-size:15px;margin:0 0 10px}
+  .row{display:flex;gap:14px;align-items:flex-start}
+  .side{width:280px;flex:none}
+  .grow{flex:1;min-width:0}
+  table{border-collapse:collapse;width:100%;font-size:13px}
+  th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+  th{color:var(--sub);font-weight:500;font-size:12px;background:#fafbfc}
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  .badge{display:inline-block;border-radius:4px;padding:1px 7px;font-size:12px;margin-right:4px}
+  .b-core{background:#e8eef9;color:var(--accent)}
+  .b-peripheral{background:var(--chip);color:var(--sub)}
+  .b-retracted{background:#fbe6e4;color:var(--bad)}
+  .b-corrected{background:#fdf2df;color:var(--warn)}
+  .b-l0{background:var(--bad);color:#fff}
+  .b-l1{background:#f6a723;color:#fff}
+  .b-pending{background:#fdf2df;color:var(--warn)}
+  .b-confirmed{background:var(--ok);color:#fff}
+  .b-verifying{background:#e8eef9;color:var(--accent)}
+  .b-suspected{background:var(--chip);color:var(--sub)}
+  .b-dismissed{background:var(--chip);color:var(--sub)}
+  .flag-banner{border:1px solid var(--bad);background:#fdf0ef;border-radius:8px;padding:10px 12px;margin-bottom:10px}
+  .flag-banner.l1only{border-color:#f6a723;background:#fdf7ec}
+  .btn{border:1px solid var(--line);background:#fff;border-radius:6px;padding:5px 12px;font-size:13px;
+       cursor:pointer;color:var(--ink)}
+  .btn:hover{background:var(--chip)}
+  .btn.danger{border-color:var(--bad);color:var(--bad)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn.small{padding:2px 9px;font-size:12px}
+  .muted{color:var(--sub)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{background:var(--chip);border-radius:14px;padding:3px 10px;font-size:12px;cursor:pointer}
+  .chip:hover{background:#dfe7f2}
+  #graph{width:100%;height:700px}
+  .cluster-item{padding:7px 9px;border-radius:6px;cursor:pointer;font-size:13px}
+  .cluster-item:hover{background:var(--chip)}
+  .cluster-item .n{color:var(--sub);font-size:12px}
+  .timeline{border-left:2px solid var(--line);margin-left:6px;padding-left:14px}
+  .timeline .ev{margin-bottom:10px}
+  .timeline .ev .t{font-size:12px;color:var(--sub)}
+  .searchres{position:absolute;top:44px;background:#fff;border:1px solid var(--line);border-radius:8px;
+             width:420px;max-height:400px;overflow:auto;box-shadow:0 6px 18px rgba(0,0,0,.08);z-index:20}
+  .searchres div{padding:7px 12px;cursor:pointer;border-bottom:1px solid var(--line)}
+  .searchres div:hover{background:var(--chip)}
+  .kbd{font-size:12px;color:var(--sub)}
+  .stat{display:inline-block;margin-right:18px}
+  .stat b{font-size:18px}
+  .audit{font-size:12px;color:var(--sub);max-height:260px;overflow:auto}
+  .audit div{padding:3px 0;border-bottom:1px dashed var(--line)}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+  <h1>百官行述</h1><span class="sub">研究者图谱 · 神经语言学 / AD 范例域</span>
+  <select id="domain"></select>
+  <div style="position:relative">
+    <input type="text" id="q" placeholder="检索：姓名 / 汉字别名 / 论文标题…">
+    <div id="qres" class="searchres" style="display:none"></div>
+  </div>
+  <nav>
+    <button data-tab="graph" class="on">图谱总览</button>
+    <button data-tab="author">研究者档案</button>
+    <button data-tab="events">造假事件</button>
+    <button data-tab="admin">管理台</button>
+  </nav>
+</header>
+<main>
+  <section id="tab-graph">
+    <div class="panel">
+      <div id="domstats"></div>
+      <span class="kbd">节点大小=论文数；颜色=方向簇；红圈=确认造假（L0）；橙点=风险提示（L1）；点击节点打开档案</span>
+    </div>
+    <div class="row">
+      <div class="side panel">
+        <h2>方向簇（只增不改）</h2>
+        <div id="clusters"></div>
+      </div>
+      <div class="grow panel" style="padding:6px">
+        <div id="graph"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="tab-author" style="display:none">
+    <div id="authorbody" class="panel muted">在图谱或检索中选择一位研究者</div>
+  </section>
+
+  <section id="tab-events" style="display:none">
+    <div id="eventslist"></div>
+    <div id="eventdetail"></div>
+  </section>
+
+  <section id="tab-admin" style="display:none">
+    <div class="panel">
+      <h2>待校对队列（别名 / 汉字名候选）</h2>
+      <div id="queue"></div>
+    </div>
+    <div class="panel">
+      <h2>操作留痕（审计日志，最近 120 条）</h2>
+      <div id="audit" class="audit"></div>
+    </div>
+    <div class="panel">
+      <h2>管线命令</h2>
+      <div class="muted" style="line-height:2">
+        采集（免费源）：<code>python3 ingest/pubmed.py neuroling</code> → <code>python3 ingest/openalex.py neuroling</code><br>
+        图谱刷新：<code>python3 analyze/graph.py neuroling</code><br>
+        造假事件：<code>python3 manage/events.py apply data/lesne_event.json</code> ｜ <code>list</code><br>
+        增量更新周期建议：免费源每日、订阅/中文源每周、核心分析每月（外部定时触发上述命令）
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const $$=s=>document.querySelectorAll(s);
+let state={domain:"",graph:null,user:"zhang"};
+
+async function api(path,opt){
+  const r=await fetch(path,opt);
+  return r.json();
+}
+function esc(s){return (s??"").toString().replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+function flagBadges(f){
+  let h="";
+  if(f.retraction_status==="retracted")h+='<span class="badge b-retracted">撤稿</span>';
+  if(f.retraction_status==="corrected")h+='<span class="badge b-corrected">更正</span>';
+  if(f.retraction_status==="concern")h+='<span class="badge b-corrected">关注声明</span>';
+  return h;
+}
+function statusBadge(s){return `<span class="badge b-${s}">${({"suspected":"疑似","verifying":"核实中","confirmed":"已确认","dismissed":"已排除","pending":"待确认"})[s]||s}</span>`;}
+
+/* ---------- 域与图谱 ---------- */
+async function loadDomains(){
+  const ds=await api("/api/domains");
+  $("#domain").innerHTML=ds.map(d=>`<option value="${d.id}">${d.name}（${d.papers} 篇 / ${d.authors} 人）</option>`).join("");
+  state.domain=ds[0]?.id||"";
+  $("#domain").onchange=e=>{state.domain=e.target.value;loadGraph();};
+  if(state.domain)loadGraph();
+}
+async function loadGraph(){
+  const g=await api("/api/graph?domain="+state.domain);
+  if(g.error){$("#domstats").innerHTML='<span class="muted">'+esc(g.error)+'</span>';return;}
+  state.graph=g;
+  $("#domstats").innerHTML=
+    `<span class="stat"><b>${g.nodes.length}</b> 研究者</span>`+
+    `<span class="stat"><b>${g.edges.length}</b> 共著边</span>`+
+    `<span class="stat"><b>${g.clusters.length}</b> 方向簇</span>`+
+    `<span class="stat"><b>${g.nodes.filter(n=>n.l0).length}</b> L0 标记</span>`+
+    `<span class="stat"><b>${g.nodes.filter(n=>n.l1).length}</b> L1 提示</span>`;
+  renderClusters(g);
+  drawGraph(g);
+}
+const palette=["#2456a6","#2e7d4f","#b96a00","#7048a8","#0f7f8f","#a83263","#5a6b1f","#3a6ea5",
+               "#8a4b2d","#4d4d8f","#2a7f62","#9c6127"];
+function renderClusters(g){
+  $("#clusters").innerHTML=g.clusters.map(c=>
+    `<div class="cluster-item" data-label="${c.label}">
+       <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${palette[c.label%palette.length]};margin-right:6px"></span>
+       簇 #${c.label} <span class="n">(${c.size} 人)</span><br>
+       <span class="n">${c.top.map(t=>esc(t.name)).join(" · ")}</span>
+     </div>`).join("");
+  $$(".cluster-item").forEach(el=>el.onclick=()=>highlightCluster(+el.dataset.label));
+}
+let chart=null;
+function drawGraph(g){
+  if(chart)chart.dispose();
+  chart=echarts.init($("#graph"));
+  const nodes=g.nodes.map(n=>({
+    id:n.id,name:(n.zh?n.zh+" ":"")+n.name,value:n.papers,symbolSize:6+Math.min(30,Math.sqrt(n.papers)*2.2),
+    itemStyle:{
+      color:n.l0?"#b3372f":(n.l1?"#f6a723":palette[(n.cluster??0)%palette.length]),
+      borderColor:n.l0?"#7d1f19":(n.tier==="core"?"#1c2430":"#ffffff"),
+      borderWidth:n.tier==="core"?2:(n.l0?2.5:1),
+      borderType:n.l1&&!n.l0?"dashed":"solid"
+    },
+    label:{show:n.tier==="core"||n.l0||n.l1,fontSize:11},
+    _n:n
+  }));
+  const edges=g.edges.map(e=>({source:e.source,target:e.target,value:e.weight,
+    lineStyle:{width:Math.min(6,0.4+Math.log2(1+e.weight)),opacity:0.35}}));
+  chart.setOption({
+    tooltip:{formatter:p=>{
+      if(p.dataType==="node"){const n=p.data._n;
+        return `<b>${esc(p.data.name)}</b> [${n.id}]<br>论文 ${n.papers} · 被引 ${n.citations}<br>`+
+          (n.l0?'<span style="color:#b3372f">■ L0 确认造假</span><br>':"")+
+          (n.l1?'<span style="color:#b96a00">● L1 风险提示</span><br>':"")+
+          (n.flagged_papers?`涉标记论文 ${n.flagged_papers} 篇<br>`:"")+
+          `<span style="color:#888">簇 #${n.cluster??"-"} · ${n.tier==="core"?"核心层":"外围层"} · 点击打开档案</span>`;}
+      return `共著 ${p.data.value} 篇`;
+    }},
+    series:[{type:"graph",layout:"force",data:nodes,links:edges,roam:true,draggable:true,
+      force:{repulsion:120,edgeLength:[30,110],gravity:0.06},
+      emphasis:{focus:"adjacency",lineStyle:{opacity:0.9}}}]
+  });
+  chart.on("click",p=>{if(p.dataType==="node")openAuthor(p.data.id);});
+}
+function highlightCluster(label){
+  chart.dispatchAction({type:"downplay"});
+  const idx=state.graph.nodes.map((n,i)=>n.cluster===label?i:-1).filter(i=>i>=0);
+  chart.dispatchAction({type:"highlight",seriesIndex:0,dataIndex:idx});
+}
+
+/* ---------- 研究者档案 ---------- */
+async function openAuthor(id){
+  switchTab("author");
+  $("#authorbody").innerHTML='<span class="muted">加载中…</span>';
+  const a=await api("/api/author/"+id);
+  if(a.error){$("#authorbody").innerHTML=esc(a.error);return;}
+  const f0=a.flags.filter(f=>f.level==="L0"&&f.status!=="dismissed");
+  const f1=a.flags.filter(f=>f.level==="L1"&&f.status!=="dismissed");
+  let flags="";
+  if(f0.length)flags+=`<div class="flag-banner"><b>⛔ L0 确认造假标记</b>`+f0.map(f=>
+    `<div>事件「${esc(f.event_title||f.slug)}」 ${statusBadge(f.status)}<div class="muted">${esc(f.basis)}</div></div>`).join("")+`</div>`;
+  if(f1.length)flags+=`<div class="flag-banner l1only"><b>⚠ L1 风险提示（非定性）</b>`+f1.map(f=>
+    `<div>事件「${esc(f.event_title||f.slug)}」<div class="muted">${esc(f.basis)}</div></div>`).join("")+`</div>`;
+  const aff=(()=>{let h="",last="";for(const x of a.affiliations){const y=x.start_year||"?";
+      if(y!==last){h+=`<div class="ev"><div class="t">${y}${x.end_year&&x.end_year!==x.start_year?"–"+x.end_year:""}</div>${esc(x.institution)} <span class="muted">[${({"auto":"自动推导","web":"网页抓取","manual":"人工录入","llm_pending":"LLM建议"})[x.source_tag]}]</span></div>`;last=y;}}
+    return h||'<div class="muted">暂无履历（机构官网抓取与人工录入待补充）</div>';})();
+  $("#authorbody").innerHTML=`
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <div>
+        <h2 style="margin:0">${esc(a.name_display)} ${a.name_zh?`<span style="color:var(--sub)">（${esc(a.name_zh)}）</span>`:""}</h2>
+        <div class="muted" style="margin-top:4px">${a.id} ·
+          <span class="badge b-${a.tier}">${a.tier==="core"?"核心层":"外围层"}</span>
+          ${a.orcid?`<a href="https://orcid.org/${esc(a.orcid.replace('https://orcid.org/',''))}" target="_blank">ORCID</a>`:""}
+          ${a.openalex_id?` · <a href="${esc(a.openalex_id)}" target="_blank">OpenAlex</a>`:""}
+        </div>
+      </div>
+      <div>
+        <input type="text" id="hanzi" placeholder="录入汉字真名" style="width:140px">
+        <button class="btn" onclick="setHanzi('${a.id}')">保存</button>
+      </div>
+    </div>
+    ${flags}
+    <div class="row" style="margin-top:12px">
+      <div class="grow">
+        <div class="panel"><h2>论文（${a.papers.length}）</h2>
+          <table><tr><th>年份</th><th>标题</th><th>期刊</th><th>被引</th><th>状态</th></tr>
+          ${a.papers.map(p=>`<tr>
+            <td>${p.year||""}</td>
+            <td><a href="${p.pmid?`https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/`:"#"}" target="_blank">${esc(p.title)}</a>
+                ${p.n_flags?`<span class="badge b-retracted">标记×${p.n_flags}</span>`:""}</td>
+            <td class="muted">${esc(p.journal)}</td><td>${p.cited_by_count||0}</td>
+            <td>${flagBadges(p)}</td></tr>`).join("")}
+          </table>
+        </div>
+        <div class="panel"><h2>合作者（前 30）</h2><div class="chips">
+          ${a.collaborators.map(c=>`<span class="chip" onclick="openAuthor('${c.id}')">${esc(c.name_display)} ×${c.co_papers}</span>`).join("")}
+        </div></div>
+      </div>
+      <div class="side">
+        <div class="panel"><h2>时间履历</h2><div class="timeline">${aff}</div></div>
+        <div class="panel"><h2>方向簇归属</h2>
+          ${a.clusters.length?a.clusters.map(c=>`<div>簇 #${c.label}（批次 ${esc(c.batch_id)}，权重 ${c.weight}）</div>`).join(""):'<div class="muted">暂无</div>'}
+        </div>
+        <div class="panel"><h2>别名</h2>
+          <table><tr><th>别名</th><th>类型</th><th>来源</th><th>状态</th></tr>
+          ${a.aliases.map(al=>`<tr><td>${esc(al.alias)}</td><td>${al.alias_type}</td><td>${al.source}</td>
+            <td>${al.verified===1?"✅":(al.verified===-1?"❌":"待校对")}</td></tr>`).join("")}
+          </table>
+        </div>
+        <div class="panel"><h2>留痕</h2><div class="audit">
+          ${a.audit.map(l=>`<div>${l.ts} · ${esc(l.actor)} · ${esc(l.action)} <span class="kbd">${esc(l.detail||"")}</span></div>`).join("")||"无"}
+        </div></div>
+      </div>
+    </div>`;
+}
+async function setHanzi(id){
+  const v=$("#hanzi").value.trim();
+  if(!v)return;
+  await api(`/api/author/${id}/hanzi`,{method:"POST",body:JSON.stringify({hanzi:v,by:state.user})});
+  openAuthor(id);
+}
+
+/* ---------- 造假事件 ---------- */
+async function loadEvents(){
+  const evs=await api("/api/events");
+  $("#eventslist").innerHTML=`<div class="panel"><h2>造假事件</h2>`+
+    (evs.length?`<table><tr><th>#</th><th>事件</th><th>状态</th><th>论文标记</th><th>L0</th><th>L1</th><th>来源</th><th></th></tr>`+
+      evs.map(e=>`<tr><td>${e.id}</td><td><a href="javascript:openEvent(${e.id})">${esc(e.title)}</a><div class="muted">${esc(e.slug)}</div></td>
+        <td>${statusBadge(e.status)}</td><td>${e.n_paper_flags}</td><td>${e.n_l0}</td><td>${e.n_l1}</td>
+        <td>${e.source_urls.map((u,i)=>`<a href="${esc(u)}" target="_blank">源${i+1}</a>`).join(" ")}</td>
+        <td>${e.status!=="confirmed"?`<button class="btn small primary" onclick="confirmEvent(${e.id})">人工确认事件</button>`:""}</td></tr>`).join("")+
+      "</table>":'<div class="muted">暂无事件</div>')+`</div>`;
+}
+async function openEvent(id){
+  switchTab("events");
+  const e=await api("/api/event/"+id);
+  if(e.error)return;
+  $("#eventdetail").innerHTML=`<div class="panel">
+    <h2>${esc(e.title)} ${statusBadge(e.status)}</h2>
+    <div class="muted">${esc(e.description||"")}</div>
+    <div style="margin:8px 0">${e.source_urls.map(u=>`<a href="${esc(u)}" target="_blank">${esc(u)}</a>`).join("<br>")}</div>
+    <h2 style="margin-top:14px">论文级标记（${e.paper_flags.length}）</h2>
+    <table><tr><th>论文</th><th>年份</th><th>类型</th><th>依据</th><th>来源</th></tr>
+      ${e.paper_flags.map(f=>`<tr><td><a href="https://pubmed.ncbi.nlm.nih.gov/${f.pmid}/" target="_blank">${esc(f.title)}</a></td>
+        <td>${f.year}</td><td>${({"retraction":"撤稿","correction":"更正","expression_of_concern":"关注声明","questioned":"质疑"})[f.flag_type]}</td>
+        <td class="muted">${esc(f.note||"")}</td><td>${f.source_url?`<a href="${esc(f.source_url)}" target="_blank">PubMed</a>`:""}</td></tr>`).join("")}
+    </table>
+    <h2 style="margin-top:14px">人员级标记</h2>
+    <table><tr><th>研究者</th><th>级别</th><th>状态</th><th>依据</th><th>操作</th></tr>
+      ${e.author_flags.map(f=>`<tr>
+        <td><a href="javascript:openAuthor('${f.id}')">${esc(f.name_display)}</a></td>
+        <td><span class="badge b-${f.level.toLowerCase()}">${f.level}</span></td>
+        <td>${statusBadge(f.status)}</td><td class="muted">${esc(f.basis)}</td>
+        <td>${f.level==="L0"&&f.status==="pending"
+            ?`<input type="text" placeholder="定性依据" id="basis-${f.id}" style="width:140px">
+               <button class="btn small danger" onclick="confirmL0(${f.id})">人工确认 L0</button>`
+            :(f.status!=="dismissed"&&f.level==="L1"?`<button class="btn small" onclick="dismissFlag(${f.id})">排除</button>`:"")}
+        </td></tr>`).join("")}
+    </table>
+    ${e.report?`<h2 style="margin-top:14px">受影响知识面（修订报告）</h2>
+      <div class="muted">施引文献 ${e.report.affected_citing_papers.length} 篇（该方向的知识依赖面，修订方向树时参考）：</div>
+      <details><summary class="kbd">展开清单</summary><table>
+        ${e.report.affected_citing_papers.map(c=>`<tr><td>${c.year}</td>
+          <td><a href="https://pubmed.ncbi.nlm.nih.gov/${c.pmid}/" target="_blank">${esc(c.title)}</a></td></tr>`).join("")}
+      </table></details>`:""}
+    <h2 style="margin-top:14px">留痕</h2>
+    <div class="audit">${e.audit.map(l=>`<div>${l.ts} · ${esc(l.actor)} · ${esc(l.action)} <span class="kbd">${esc(l.detail||"")}</span></div>`).join("")}</div>
+  </div>`;
+}
+async function confirmL0(flagId){
+  const basis=$(`#basis-${flagId}`)?.value||"";
+  const by=prompt("操作者署名（留痕）：",state.user)||state.user;
+  if(!confirm("L0 为确认造假定性，须有明确证据。确认执行？"))return;
+  await api(`/api/flag/${flagId}/confirm-l0`,{method:"POST",body:JSON.stringify({by,basis})});
+  location.reload();
+}
+async function dismissFlag(flagId){
+  await api(`/api/flag/${flagId}/dismiss`,{method:"POST",body:JSON.stringify({by:state.user})});
+  location.reload();
+}
+async function confirmEvent(id){
+  const by=prompt("操作者署名（留痕）：",state.user)||state.user;
+  await api(`/api/event/${id}/confirm`,{method:"POST",body:JSON.stringify({by})});
+  loadEvents();
+}
+
+/* ---------- 管理台 ---------- */
+async function loadAdmin(){
+  const q=await api("/api/queue");
+  $("#queue").innerHTML=q.length?`<table><tr><th>别名</th><th>类型</th><th>来源</th><th>置信度</th><th>研究者</th><th>操作</th></tr>`+
+    q.map(r=>`<tr><td>${esc(r.alias)}</td><td>${r.alias_type}</td><td>${r.source}</td>
+      <td>${r.confidence??"-"}</td><td><a href="javascript:openAuthor('${r.author_id}')">${esc(r.name_display)}</a></td>
+      <td><button class="btn small" onclick="verifyAlias(${r.id},true)">确认</button>
+          <button class="btn small danger" onclick="verifyAlias(${r.id},false)">驳回</button></td></tr>`).join("")+"</table>"
+    :'<div class="muted">队列为空</div>';
+  const al=await api("/api/audit");
+  $("#audit").innerHTML=al.map(l=>`<div>${l.ts} · ${esc(l.actor)} · ${esc(l.action)} · ${esc(l.entity_type||"")}:${esc(l.entity_id||"")} <span class="kbd">${esc(l.detail||"")}</span></div>`).join("");
+}
+async function verifyAlias(id,ok){
+  await api(`/api/alias/${id}/verify`,{method:"POST",body:JSON.stringify({verified:ok,by:state.user})});
+  loadAdmin();
+}
+
+/* ---------- 检索 ---------- */
+let qt=null;
+$("#q").addEventListener("input",()=>{
+  clearTimeout(qt);
+  qt=setTimeout(async()=>{
+    const v=$("#q").value.trim();
+    if(!v){$("#qres").style.display="none";return;}
+    const r=await api("/api/search?q="+encodeURIComponent(v));
+    $("#qres").innerHTML=r.authors.map(a=>
+      `<div onclick="openAuthor('${a.id}');hideQ()">👤 ${esc(a.name_display)}${a.name_zh?"（"+esc(a.name_zh)+"）":""}
+        <span class="muted">${a.papers} 篇 ${a.l0?"⛔L0":""}${a.l1?"⚠L1":""}</span></div>`).join("")+
+      r.papers.map(p=>`<div onclick="${p.pmid?`window.open('https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/')`:""};hideQ()">📄 ${esc(p.title)} <span class="muted">${p.year||""} ${flagBadges(p)}</span></div>`).join("")
+      ||'<div class="muted">无结果</div>';
+    $("#qres").style.display="block";
+  },250);
+});
+function hideQ(){$("#qres").style.display="none";}
+document.addEventListener("click",e=>{if(!e.target.closest("#q")&&!e.target.closest("#qres"))hideQ();});
+
+/* ---------- 导航 ---------- */
+function switchTab(t){
+  $$("nav button").forEach(b=>b.classList.toggle("on",b.dataset.tab===t));
+  for(const x of["graph","author","events","admin"])$("#tab-"+x).style.display=(x===t)?"":"none";
+  if(t==="events")loadEvents();
+  if(t==="admin")loadAdmin();
+  if(t==="graph"&&chart)setTimeout(()=>chart.resize(),50);
+}
+$$("nav button").forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+window.addEventListener("resize",()=>chart&&chart.resize());
+
+loadDomains();
+</script>
+</body>
+</html>

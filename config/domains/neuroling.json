@@ -1,0 +1,51 @@
+{
+  "id": "neuroling",
+  "name": "神经语言学与失语症",
+  "description": "主用域：失语症临床与语言神经科学（含 PPA 各亚型、语言网络、阅读/语音加工）。收录规则：MeSH 命中 ∪ 强关键词命中 ∪ 边界词与神经语境共现。",
+  "pubmed": {
+    "mesh_terms": [
+      "Aphasia",
+      "Aphasia, Broca",
+      "Aphasia, Wernicke",
+      "Aphasia, Primary Progressive",
+      "Language Disorders",
+      "Linguistics",
+      "Speech Disorders",
+      "Speech Perception",
+      "Dyslexia",
+      "Alexia, Pure",
+      "Agraphia",
+      "Language Tests"
+    ],
+    "mesh_boundary": ["Language", "Speech", "Reading", "Semantics", "Phonetics"],
+    "keywords_strong": [
+      "neurolinguistics",
+      "neurolinguistic",
+      "aphasia",
+      "aphasic",
+      "aphasiology",
+      "primary progressive aphasia",
+      "logopenic variant",
+      "semantic variant",
+      "nonfluent variant",
+      "post-stroke aphasia"
+    ],
+    "keywords_boundary": ["language network", "language networks", "speech processing", "semantic processing", "dyslexic"],
+    "cooccur_terms": ["brain", "neural", "cortex", "cortical", "neuro", "fmri", "lesion", "aphasia", "cognitive", "eeg", "meg", "dti"],
+    "max_fetch": 10000,
+    "sort": "pub_date"
+  },
+  "openalex": {
+    "batch": 100,
+    "max_cite_seed_per_seed": 500
+  },
+  "seeds": {
+    "cite_seed_min": 1,
+    "seed_dois": [],
+    "seed_pmids": []
+  },
+  "tier": {
+    "core_min_papers": 8,
+    "core_min_total_citations": 150
+  }
+}

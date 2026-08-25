@@ -1,0 +1,31 @@
+{
+  "id": "ad_lesne",
+  "name": "AD范例域：Lesné Aβ*56 事件链",
+  "description": "范例域：以 2006 年 Lesné 等 Nature Aβ*56 论文为锚点的小型数据域，用于端到端验证造假标记闭环（事件登记→论文级标记→L0/L1 人员分级→受影响知识修订）。",
+  "pubmed": {
+    "mesh_terms": [],
+    "mesh_boundary": [],
+    "keywords_strong": [
+      "Abeta*56[tiab]",
+      "A beta*56[tiab]",
+      "amyloid beta *56[tiab]"
+    ],
+    "keywords_boundary": [],
+    "author_queries": ["Lesne S[Author]", "Lesné S[Author]"],
+    "max_fetch": 3000,
+    "sort": "pub_date"
+  },
+  "openalex": {
+    "batch": 100,
+    "max_cite_seed_per_seed": 500
+  },
+  "seeds": {
+    "cite_seed_min": 1,
+    "seed_dois": ["10.1038/nature04533"],
+    "seed_pmids": []
+  },
+  "tier": {
+    "core_min_papers": 5,
+    "core_min_total_citations": 100
+  }
+}

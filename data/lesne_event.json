@@ -1,0 +1,18 @@
+{
+  "slug": "lesne-abeta56",
+  "domain_id": "ad_lesne",
+  "title": "Lesné Aβ*56 学术质疑事件",
+  "status": "verifying",
+  "description": "2022 年 Science 新闻调查指出 Sylvain Lesné 多篇论文中疑似存在图像篡改；其 2006 年 Nature 论文（Aβ*56 损伤记忆）曾长期影响阿尔茨海默病淀粉样蛋白寡聚体研究方向。本事件用于验证造假标记闭环：论文级标记（以 PubMed 权威撤稿/更正标注为准）、人员级分级（L0 定性须人工确认，共同作者仅自动 L1 风险提示）、受影响文献清单与修订留痕。",
+  "source_urls": [
+    "https://www.science.org/content/article/potential-fabrication-one-alzheimers-key-papers",
+    "https://retractionwatch.com/?s=Lesne",
+    "https://pubpeer.com/search?q=Lesne"
+  ],
+  "l0_candidates": [
+    {
+      "name_query": "Sylvain Lesné",
+      "basis": "Science 2022 调查报道点名；多篇论文被 PubMed 标注撤稿/更正。L0 定性须人工确认。"
+    }
+  ]
+}
