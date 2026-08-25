@@ -161,6 +161,8 @@ def export(conn, domain_id, labels, edges, papers_of, cit, cluster_id_by_label):
             (a,)).fetchone()
         if not row:
             continue
+        if len(papers_of[a]) < 2 and row["tier"] != "core" and a not in flags_a:
+            continue  # 单篇外围作者不上图（仍在库内与簇计算中）
         nodes.append({
             "id": row["id"], "name": row["name_display"], "zh": row["name_zh"],
             "tier": row["tier"], "cluster": labels.get(a),

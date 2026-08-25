@@ -181,12 +181,15 @@ async function loadGraph(){
 const palette=["#2456a6","#2e7d4f","#b96a00","#7048a8","#0f7f8f","#a83263","#5a6b1f","#3a6ea5",
                "#8a4b2d","#4d4d8f","#2a7f62","#9c6127"];
 function renderClusters(g){
-  $("#clusters").innerHTML=g.clusters.map(c=>
+  const cs=[...g.clusters].sort((a,b)=>b.size-a.size);
+  const show=cs.slice(0,30);
+  $("#clusters").innerHTML=show.map(c=>
     `<div class="cluster-item" data-label="${c.label}">
        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${palette[c.label%palette.length]};margin-right:6px"></span>
        簇 #${c.label} <span class="n">(${c.size} 人)</span><br>
        <span class="n">${c.top.map(t=>esc(t.name)).join(" · ")}</span>
-     </div>`).join("");
+     </div>`).join("")+
+    (cs.length>30?`<div class="muted" style="padding:6px 9px">其余 ${cs.length-30} 个小簇略…</div>`:"");
   $$(".cluster-item").forEach(el=>el.onclick=()=>highlightCluster(+el.dataset.label));
 }
 let chart=null;
