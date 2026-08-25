@@ -1,0 +1,23 @@
+{
+  "_说明": "复制本文件为 <域id>.json（小写下划线命名）。域 = 一组确定性收录规则 + 种子。收录判定：MeSH命中 ∪ 强关键词命中 ∪ 边界词与语境词共现 ∪ 作者检索 ∪ 种子引用扩散。",
+  "id": "example_domain",
+  "name": "人类可读的域名称",
+  "description": "一句话说明学科边界与收录意图",
+  "pubmed": {
+    "mesh_terms": ["MeSH 精确词，如 Aphasia；可用 manage/domains.py check 校验"],
+    "mesh_boundary": ["过宽的 MeSH 词，如 Language —— 须与 cooccur_terms 共现才收录"],
+    "keywords_strong": ["标题/摘要强关键词，可带 [tiab] 等限定符与 * 通配"],
+    "keywords_boundary": ["边界短语，须共现"],
+    "cooccur_terms": ["神经/学科语境词，用于约束边界词"],
+    "author_queries": ["范例域用法：Lesne S[Author]"],
+    "max_fetch": 10000,
+    "sort": "pub_date"
+  },
+  "openalex": { "batch": 100, "max_cite_seed_per_seed": 500 },
+  "seeds": {
+    "cite_seed_min": 1,
+    "seed_dois": ["引用了这些种子论文的文献按 cite_seed 规则收录"],
+    "seed_pmids": []
+  },
+  "tier": { "core_min_papers": 8, "core_min_total_citations": 150 }
+}
