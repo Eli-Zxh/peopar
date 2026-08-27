@@ -160,15 +160,21 @@ CREATE TABLE IF NOT EXISTS author_clusters (
     weight     REAL NOT NULL DEFAULT 1.0,
     PRIMARY KEY (author_id, cluster_id)
 );
+CREATE INDEX IF NOT EXISTS ix_ac_cluster ON author_clusters(cluster_id);
 
 -- 方向快照（LLM 合成 + 人工在环）
 CREATE TABLE IF NOT EXISTS snapshots (
     id           INTEGER PRIMARY KEY,
     cluster_id   INTEGER NOT NULL REFERENCES clusters(id),
-    content      TEXT NOT NULL,              -- 定义/代表文献/时间线/分歧点
-    model        TEXT,
+    content      TEXT NOT NULL,              -- 定义/代表文献/时间线/分歧点（JSON）
+    model        TEXT,                       -- 合成者标识（agent 会话/模型名）
+    prompt_ver   TEXT,                       -- 提示词模板版本（文件名@日期）
     status       TEXT NOT NULL DEFAULT 'active'
                  CHECK (status IN ('active','affected_pending_review','revised','superseded')),
+    review_status TEXT NOT NULL DEFAULT 'pending'
+                 CHECK (review_status IN ('pending','approved','rejected')),
+    reviewed_by  TEXT,
+    reviewed_at  TEXT,
     supersedes   INTEGER REFERENCES snapshots(id),
     generated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -260,3 +266,56 @@ CREATE VIEW IF NOT EXISTS v_alias_review AS
 SELECT a.id AS author_id, a.name_display, al.alias, al.alias_type, al.source, al.confidence
 FROM author_aliases al JOIN authors a ON a.id = al.author_id
 WHERE al.verified = 0 AND al.alias_type = 'hanzi';
+
+-- ============ 定位调整增量（2026-08-27） ============
+
+-- 作者级快照（LLM 合成画像 + 人工在环；与 snapshots 治理结构对齐）
+CREATE TABLE IF NOT EXISTS author_snapshots (
+    id          INTEGER PRIMARY KEY,
+    author_id   TEXT NOT NULL REFERENCES authors(id),
+    content     TEXT NOT NULL,              -- {focus, summary, key_contributions, risks, representative_paper_ids}
+    model       TEXT,
+    prompt_ver  TEXT,
+    basis_signature TEXT,                   -- 合成时该作者论文集合指纹（失效感知）
+    status      TEXT NOT NULL DEFAULT 'active'
+                CHECK (status IN ('active','affected_pending_review','superseded')),
+    review_status TEXT NOT NULL DEFAULT 'pending'
+                CHECK (review_status IN ('pending','approved','rejected')),
+    reviewed_by TEXT,
+    reviewed_at TEXT,
+    supersedes  INTEGER REFERENCES author_snapshots(id),
+    generated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS ix_author_snapshots_author ON author_snapshots(author_id);
+
+-- LLM 判断裁决队列（噪声簇/方向并拆/别名候选）：LLM 提案 → 人工裁决 → 留痕
+CREATE TABLE IF NOT EXISTS judgments (
+    id          INTEGER PRIMARY KEY,
+    jtype       TEXT NOT NULL CHECK (jtype IN ('noise_cluster','direction_merge','direction_split','alias_candidate')),
+    entity_type TEXT NOT NULL,              -- cluster | author
+    entity_id   TEXT NOT NULL,
+    proposal    TEXT NOT NULL,              -- JSON：建议内容 + 理由 + 锚定 paper_id
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','accepted','rejected','superseded')),
+    decided_by  TEXT,
+    decided_at  TEXT,
+    decision_note TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS ix_judgments_status ON judgments(status);
+
+-- B 层源（机构 webvpn：Scopus/CNKI/万方）导入批次：审计与去重
+CREATE TABLE IF NOT EXISTS webvpn_imports (
+    id          INTEGER PRIMARY KEY,
+    domain_id   TEXT NOT NULL REFERENCES domains(id),
+    source      TEXT NOT NULL CHECK (source IN ('scopus','cnki','wanfang')),
+    file_name   TEXT,
+    file_hash   TEXT,                       -- 导出文件指纹（防重复导入）
+    query       TEXT,                       -- 检索式/来源说明
+    n_records   INTEGER,
+    n_new       INTEGER,                    -- 新增论文
+    n_dup       INTEGER,                    -- 去重跳过
+    status      TEXT NOT NULL DEFAULT 'ok',
+    imported_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS ix_webvpn_domain ON webvpn_imports(domain_id);

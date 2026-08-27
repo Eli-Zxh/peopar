@@ -1,0 +1,34 @@
+{
+  "judgments": [
+    {
+      "jtype": "noise_cluster",
+      "entity_type": "cluster",
+      "entity_id": 2,
+      "proposal": {
+        "reason": "该簇 4 篇论文全部为腈水合酶（nitrile hydratase）结构生物学（paper：Protonation structures of Cys-sulfinic…、Arginine 56 mutation in the beta subunit of nitrile hydratase…、Time-Resolved Crystallography of the Reaction Intermediate of Nitrile Hydratase…、Catalytic Mechanism of Nitrile Hydratase…），与 AD/Aβ 方向无任何关联，系『Lesne S』与『Yohda M 等』同名/近名作者误并。建议展示层排除。",
+        "anchor_papers": [0],
+        "top_authors": ["Masafumi Odaka", "Masafumi Yohda", "Takumi Noguchi"]
+      }
+    },
+    {
+      "jtype": "noise_cluster",
+      "entity_type": "cluster",
+      "entity_id": 3,
+      "proposal": {
+        "reason": "该簇 1 篇论文为血红蛋白病分子流行病学调查（Molecular epidemiological survey of hemoglobinopathies in the Wuxi region），与中国无锡地区血红蛋白病相关，与 AD 范例域定位不符，系同名作者误并。建议展示层排除。",
+        "anchor_papers": [0],
+        "top_authors": ["Chun-Ping Lin", "Fen Lin", "Hui Yang"]
+      }
+    },
+    {
+      "jtype": "noise_cluster",
+      "entity_type": "cluster",
+      "entity_id": 4,
+      "proposal": {
+        "reason": "该簇 1 篇论文为蛋白酶体抑制二肽优化（Optimization of a series of dipeptides with a P3 threonine residue as proteasome inhibitors），为药物化学工作，与 AD 方向无实质关联，系同名作者误并。建议展示层排除。",
+        "anchor_papers": [0],
+        "top_authors": ["Christopher Blackburn", "Christopher Tsu"]
+      }
+    }
+  ]
+}

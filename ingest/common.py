@@ -1,5 +1,6 @@
 """公共基础：数据库访问、HTTP 抓取（重试）、ID 生成、审计。仅标准库。"""
 import gzip
+import http.client
 import json
 import re
 import sqlite3
@@ -15,6 +16,10 @@ SCHEMA_PATH = ROOT / "schema.sql"
 CONFIG_DIR = ROOT / "config" / "domains"
 
 UA = {"User-Agent": "peopar/0.1 (research-graph; mailto:zhangxinhao@local)"}
+
+# 网络层可重试异常（断连/超时/响应不完整）
+RETRYABLE = (urllib.error.URLError, TimeoutError, ConnectionError,
+             http.client.IncompleteRead, http.client.RemoteDisconnected)
 
 
 def name_sort(name: str) -> str:
@@ -39,7 +44,39 @@ def init_db(conn: sqlite3.Connection):
     cols = {r[1] for r in conn.execute("PRAGMA table_info(authors)")}
     if "name_sort" not in cols:
         conn.execute("ALTER TABLE authors ADD COLUMN name_sort TEXT")
+    # 轻量迁移：旧库补快照审阅列
+    scols = {r[1] for r in conn.execute("PRAGMA table_info(snapshots)")}
+    for col, ddl in [
+        ("review_status", "ALTER TABLE snapshots ADD COLUMN review_status TEXT NOT NULL DEFAULT 'pending'"),
+        ("prompt_ver", "ALTER TABLE snapshots ADD COLUMN prompt_ver TEXT"),
+        ("reviewed_by", "ALTER TABLE snapshots ADD COLUMN reviewed_by TEXT"),
+        ("reviewed_at", "ALTER TABLE snapshots ADD COLUMN reviewed_at TEXT"),
+        ("basis_signature", "ALTER TABLE snapshots ADD COLUMN basis_signature TEXT"),
+    ]:
+        if col not in scols:
+            conn.execute(ddl)
+    # 轻量迁移：簇展示属性（噪声簇排除）
+    ccols = {r[1] for r in conn.execute("PRAGMA table_info(clusters)")}
+    if "display" not in ccols:
+        conn.execute("ALTER TABLE clusters ADD COLUMN display TEXT NOT NULL DEFAULT 'normal'")
+    # 轻量迁移：author_clusters 按簇查询索引
+    idx = {r[1] for r in conn.execute("PRAGMA index_list(author_clusters)")}
+    if "ix_ac_cluster" not in idx:
+        conn.execute("CREATE INDEX IF NOT EXISTS ix_ac_cluster ON author_clusters(cluster_id)")
+    # 轻量迁移：机构官网抓取信息（note / verified）
+    acols = {r[1] for r in conn.execute("PRAGMA table_info(affiliations)")}
+    if "note" not in acols:
+        conn.execute("ALTER TABLE affiliations ADD COLUMN note TEXT")
+    if "verified" not in acols:
+        conn.execute("ALTER TABLE affiliations ADD COLUMN verified INTEGER NOT NULL DEFAULT 0")
     conn.commit()
+
+
+def basis_signature(ids) -> str:
+    """论文 id 集合的稳定指纹（排序拼接 sha256 前 16 位），用于快照失效感知。"""
+    import hashlib
+    key = ",".join(str(i) for i in sorted(ids))
+    return hashlib.sha256(key.encode("utf-8")).hexdigest()[:16]
 
 
 def audit(conn, actor, action, entity_type=None, entity_id=None, detail=None):
@@ -94,7 +131,7 @@ def fetch_json(url: str, params: dict | None = None, retries: int = 3,
                 last_err = e
                 continue
             raise
-        except (urllib.error.URLError, TimeoutError) as e:
+        except RETRYABLE as e:
             last_err = e
             time.sleep(2 ** attempt)
     raise RuntimeError(f"fetch failed after {retries} retries: {url} :: {last_err}")
@@ -119,7 +156,7 @@ def fetch_xml(url: str, params: dict | None = None, retries: int = 3, timeout: i
                 last_err = e
                 continue
             raise
-        except (urllib.error.URLError, TimeoutError) as e:
+        except RETRYABLE as e:
             last_err = e
             time.sleep(2 ** attempt)
     raise RuntimeError(f"fetch failed after {retries} retries: {url} :: {last_err}")

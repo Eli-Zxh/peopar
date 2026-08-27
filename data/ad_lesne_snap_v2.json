@@ -1,0 +1,17 @@
+{
+  "domain": "ad_lesne",
+  "model": "peopar-agent@2026-08-27 (deepseek-v4-flash)",
+  "prompt_ver": "cluster_snapshot.md@v2-20260826",
+  "snapshots": [
+    {
+      "cluster_id": 1,
+      "name": "Aβ 寡聚体组装、毒性机制与记忆损伤（Amyloid-β oligomers）",
+      "definition": "该方向研究淀粉样蛋白-β（Aβ）寡聚体在阿尔茨海默病（AD）中的作用：寡聚体如何从单体组装、如何损伤突触可塑性与记忆，以及其作为疾病标志物的方法学（检测 aβ*56，paper 45）。核心锚点是 2006 年 Lesné 等 Nature 报道的 Aβ*56 寡聚体（paper 65，已撤稿），后续覆盖可溶性寡聚体的毒性机制（NMDA 受体、α-分泌酶，paper 66）、β 位 APP 裂解酶 BACE1（paper 58）、α-突触核蛋白交叉调控（paper 21、14、18）与 TGF-β/缺血背景（paper 87、77）。代表性团队为 Lesné/Ashe 实验室（明尼苏达大学）与 Caen 神经血管组（Vivien、MacKenzie、Buisson）。本簇 47 篇域内论文，时间跨 2000–2026。",
+      "current_conclusions": "截至最新记录：Aβ 寡聚体（而非不溶性斑块）被视为 AD 突触与记忆损伤的关键毒性物种，此判断有大量独立综述支撑（paper 12、34、42）。但本方向核心实证链条因造假事件严重受损：2006 Nature Aβ*56 论文（paper 65）与 2012 J Neurosci（paper 39）、2011 Neurobiol Aging（paper 43）、2017 Sci Signal（paper 22）等关键论文均已撤稿，2024 年 Nature 刊出正式撤稿通知（paper 5），凡依赖上述论文的『Aβ*56 特异损伤记忆』结论不可作为可靠依据。α-突触核蛋白与 Aβ 相互作用（paper 21、14）为新近扩展方向，但部分工作同样来自受质疑作者。",
+      "timeline": "2000–2005：TGF-β/缺血与淀粉样级联早期研究（paper 87、77、85、66）。2006：Lesné 等 Nature 报道 Aβ*56 特异损伤记忆（paper 65）——『寡聚体假说』标志性文献，亦为本方向造假锚点。2007–2013：寡聚体毒性机制与形态学工作密集（paper 57、53、51、34、42）；2011–2017 年间 paper 43、22 相继撤稿。2013 起综述与方法学转向（paper 34、45、36、12）。2024–2026：Nature 撤稿通知（paper 5）、更正（paper 6）与评论（paper 9）——造假事件闭环进入收尾，方向重估进行中。",
+      "controversies": "Lesné 造假事件（data/lesne_event.json）：2006 Nature（paper 65）已撤稿，2012 J Neurosci（paper 39、40）与 2011 Neurobiol Aging（paper 43）、2017 Sci Signal（paper 22）亦撤稿；L0 定性待人工确认。『寡聚体 vs 淀粉样斑块』的病理学定位争论长期存在（paper 67）。输入记录可见本簇多篇论文出自事件当事作者，凡涉及这些论文的结论必须标注其不可靠。",
+      "representative_paper_ids": [34, 12, 42, 57],
+      "supporting_paper_ids": [65, 39, 43, 22, 5, 51, 33, 16]
+    }
+  ]
+}

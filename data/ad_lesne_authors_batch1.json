@@ -1,0 +1,31 @@
+{
+  "domain": "ad_lesne",
+  "model": "peopar-agent@2026-08-27 (deepseek-v4-flash)",
+  "prompt_ver": "author_profile.md@v1-20260827",
+  "author_snapshots": [
+    {
+      "author_id": "BG000001",
+      "focus": "Aβ 寡聚体的认知效应与 AD 记忆损伤机制",
+      "summary": "以行为学与细胞生物学方法研究 Aβ 寡聚体（含细胞来源与合成来源）对记忆的效应（paper 43，2011）。与 Lesné、Ashe、Cleary 等合作，属 Aβ*56 寡聚体假说研究圈（paper 43 已撤稿）。任职于明尼苏达大学，系事件标记论文的共同作者。",
+      "key_contributions": "参与细胞来源与合成 Aβ 寡聚体认知效应对比研究（paper 43，已撤稿）；相关撤稿通知已入库（2026）。",
+      "risks": "L1 风险提示（已确认，非定性）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+      "representative_paper_ids": [43]
+    },
+    {
+      "author_id": "BG000002",
+      "focus": "AD 动物模型的认知保护与 Aβ 寡聚体机制",
+      "summary": "参与口服化合物对 AD 模型记忆损伤的保护作用研究（paper 61，2006，未撤稿）与细胞/合成 Aβ 寡聚体认知效应研究（paper 43，2011，已撤稿）。与 Lesné、Cleary、Walsh 等合作，机构为老年医学研究与临床中心。",
+      "key_contributions": "参与 Aβ 寡聚体相关动物实验研究（paper 61 未撤稿；paper 43 已撤稿）；撤稿通知 2026 年入库。",
+      "risks": "L1 风险提示（已确认，非定性）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+      "representative_paper_ids": [61, 43]
+    },
+    {
+      "author_id": "BG000003",
+      "focus": "Aβ 寡聚体生物学与 AD 病理研究",
+      "summary": "任职于伊利诺伊大学芝加哥分校，参与细胞来源与合成来源 Aβ 寡聚体认知效应研究（paper 43，2011，已撤稿），与 Cleary、Ashe、LaDu 等合作，属 Aβ*56 寡聚体假说研究圈。",
+      "key_contributions": "参与 Aβ 寡聚体认知效应研究（paper 43，已撤稿）；相关撤稿通知已入库（2026）。",
+      "risks": "L1 风险提示（已确认，非定性）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+      "representative_paper_ids": [43]
+    }
+  ]
+}

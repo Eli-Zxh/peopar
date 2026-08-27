@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>百官行述 · 研究者图谱</title>
+<title>Researcher Atlas · 研究者图谱</title>
 <script src="/static/echarts.min.js"></script>
 <style>
   :root{
@@ -75,11 +75,19 @@
   .audit{font-size:12px;color:var(--sub);max-height:260px;overflow:auto}
   .audit div{padding:3px 0;border-bottom:1px dashed var(--line)}
   code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+  .b-approved{background:#e6f2ec;color:var(--ok)}
+  .b-rejected{background:#fbe6e4;color:var(--bad)}
+  #snapview{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;max-height:480px;overflow:auto;font-size:13px}
+  #snapview h3{font-size:14px;margin:0 0 6px}
+  #snapview .sec{margin:8px 0}
+  #snapview .sec b{color:var(--sub);font-weight:500;font-size:12px;display:block;margin-bottom:2px}
+  #snapview .ev-item{padding:4px 0;border-bottom:1px dashed var(--line)}
+  .cluster-item.snap-on{outline:1px solid var(--accent)}
 </style>
 </head>
 <body>
 <header>
-  <h1>百官行述</h1><span class="sub">研究者图谱 · 神经语言学 / AD 范例域</span>
+  <h1>Researcher Atlas</h1><span class="sub">研究者图谱 · 方向快照 · 造假标记</span>
   <select id="domain"></select>
   <div style="position:relative">
     <input type="text" id="q" placeholder="检索：姓名 / 汉字别名 / 论文标题…">
@@ -100,8 +108,9 @@
     </div>
     <div class="row">
       <div class="side panel">
-        <h2>方向簇（只增不改）</h2>
+        <h2>研究方向</h2>
         <div id="clusters"></div>
+        <div id="snapview" style="display:none"></div>
       </div>
       <div class="grow panel" style="padding:6px">
         <div id="graph"></div>
@@ -120,6 +129,10 @@
 
   <section id="tab-admin" style="display:none">
     <div class="panel">
+      <h2>方向快照审阅（LLM 合成，须人工批准）</h2>
+      <div id="snapqueue"></div>
+    </div>
+    <div class="panel">
       <h2>待校对队列（别名 / 汉字名候选）</h2>
       <div id="queue"></div>
     </div>
@@ -132,6 +145,7 @@
       <div class="muted" style="line-height:2">
         采集（免费源）：<code>python3 ingest/pubmed.py neuroling</code> → <code>python3 ingest/openalex.py neuroling</code><br>
         图谱刷新：<code>python3 analyze/graph.py neuroling</code><br>
+        方向合成：<code>python3 analyze/extract.py neuroling</code>（导出上下文）→ 按 skill 工作流合成 → <code>python3 manage/snapshot.py apply &lt;json&gt;</code> / <code>note &lt;域&gt; &lt;md&gt;</code><br>
         造假事件：<code>python3 manage/events.py apply data/lesne_event.json</code> ｜ <code>list</code><br>
         增量更新周期建议：免费源每日、订阅/中文源每周、核心分析每月（外部定时触发上述命令）
       </div>
@@ -173,6 +187,7 @@ async function loadGraph(){
     `<span class="stat"><b>${g.nodes.length}</b> 研究者</span>`+
     `<span class="stat"><b>${g.edges.length}</b> 共著边</span>`+
     `<span class="stat"><b>${g.clusters.length}</b> 方向簇</span>`+
+    `<span class="stat"><b>${g.clusters.filter(c=>c.name).length}</b> 已命名方向</span>`+
     `<span class="stat"><b>${g.nodes.filter(n=>n.l0).length}</b> L0 标记</span>`+
     `<span class="stat"><b>${g.nodes.filter(n=>n.l1).length}</b> L1 提示</span>`;
   renderClusters(g);
@@ -183,14 +198,43 @@ const palette=["#2456a6","#2e7d4f","#b96a00","#7048a8","#0f7f8f","#a83263","#5a6
 function renderClusters(g){
   const cs=[...g.clusters].sort((a,b)=>b.size-a.size);
   const show=cs.slice(0,30);
-  $("#clusters").innerHTML=show.map(c=>
-    `<div class="cluster-item" data-label="${c.label}">
+  $("#clusters").innerHTML=show.map(c=>{
+    const named=!!c.name;
+    const badge=named?(c.snap_review==="approved"?'<span class="badge b-approved">已审</span>'
+      :c.snap_review==="rejected"?'<span class="badge b-rejected">驳回</span>'
+      :'<span class="badge b-pending">待审</span>'):"";
+    return `<div class="cluster-item" data-label="${c.label}" data-cid="${c.cluster_id}">
        <span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${palette[c.label%palette.length]};margin-right:6px"></span>
-       簇 #${c.label} <span class="n">(${c.size} 人)</span><br>
+       <b>${named?esc(c.name):`簇 #${c.label}（未合成）`}</b> ${badge}
+       <span class="n">· ${c.size} 人</span><br>
        <span class="n">${c.top.map(t=>esc(t.name)).join(" · ")}</span>
-     </div>`).join("")+
+     </div>`;}).join("")+
     (cs.length>30?`<div class="muted" style="padding:6px 9px">其余 ${cs.length-30} 个小簇略…</div>`:"");
-  $$(".cluster-item").forEach(el=>el.onclick=()=>highlightCluster(+el.dataset.label));
+  state.cname={};g.clusters.forEach(c=>{if(c.name)state.cname[c.label]=c.name;});
+  $$(".cluster-item").forEach(el=>el.onclick=()=>{
+    highlightCluster(+el.dataset.label);
+    $$(".cluster-item").forEach(x=>x.classList.toggle("snap-on",x===el));
+    openSnap(+el.dataset.cid);
+  });
+}
+async function openSnap(cid){
+  const v=$("#snapview");
+  v.style.display="";
+  v.innerHTML='<span class="muted">加载快照…</span>';
+  const s=await api(`/api/cluster/${cid}/snapshot`);
+  if(!s||!s.id){v.innerHTML='<div class="muted">该簇暂无方向快照。<br>合成流程：`python3 analyze/extract.py 域id` 导出上下文后按 skill 工作流合成入库。</div>';return;}
+  const c=s.content||{};
+  const ev=(role)=>s.evidence.filter(e=>e.role===role);
+  const evRow=p=>`<div class="ev-item">${p.year||""} <a href="${p.pmid?`https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/`:"#"}" target="_blank">${esc((p.title||"").slice(0,60))}</a>
+      <span class="muted">被引${p.cited_by_count||0}</span> ${flagBadges({retraction_status:p.retraction_status})}</div>`;
+  v.innerHTML=`<h3>${esc(c.name||"未命名方向")}</h3>
+    <div>${statusBadge(s.review_status)} <span class="muted">快照#${s.id} · ${esc(s.generated_at||"")} · ${esc(s.model||"")}</span></div>
+    ${c.definition?`<div class="sec"><b>研究概述</b>${esc(c.definition)}</div>`:""}
+    ${c.current_conclusions?`<div class="sec"><b>当前结论</b>${esc(c.current_conclusions)}</div>`:""}
+    ${c.timeline?`<div class="sec"><b>历史进程</b>${esc(c.timeline)}</div>`:""}
+    ${c.controversies?`<div class="sec"><b>分歧与风险</b>${esc(c.controversies)}</div>`:""}
+    <div class="sec"><b>代表文献（${ev("representative").length}）</b>${ev("representative").map(evRow).join("")||'<span class="muted">无</span>'}</div>
+    <details><summary class="kbd">支撑文献（${ev("supporting").length}）</summary>${ev("supporting").map(evRow).join("")}</details>`;
 }
 let chart=null;
 function drawGraph(g){
@@ -216,7 +260,7 @@ function drawGraph(g){
           (n.l0?'<span style="color:#b3372f">■ L0 确认造假</span><br>':"")+
           (n.l1?'<span style="color:#b96a00">● L1 风险提示</span><br>':"")+
           (n.flagged_papers?`涉标记论文 ${n.flagged_papers} 篇<br>`:"")+
-          `<span style="color:#888">簇 #${n.cluster??"-"} · ${n.tier==="core"?"核心层":"外围层"} · 点击打开档案</span>`;}
+          `<span style="color:#888">${(state.cname&&state.cname[n.cluster])?"方向："+esc(state.cname[n.cluster]):"簇 #"+(n.cluster??"-")} · ${n.tier==="core"?"核心层":"外围层"} · 点击打开档案</span>`;}
       return `共著 ${p.data.value} 篇`;
     }},
     series:[{type:"graph",layout:"force",data:nodes,links:edges,roam:true,draggable:true,
@@ -369,6 +413,16 @@ async function confirmEvent(id){
 
 /* ---------- 管理台 ---------- */
 async function loadAdmin(){
+  const sq=await api("/api/snapshot-queue");
+  $("#snapqueue").innerHTML=sq.length?`<table><tr><th>#</th><th>域</th><th>簇</th><th>方向名</th><th>定义摘要</th><th>证据</th><th>合成者</th><th>操作</th></tr>`+
+    sq.map(r=>{const c=r.content&&typeof r.content==="object"?r.content:{};return `<tr>
+      <td>${r.id}</td><td>${esc(r.domain_id)}</td><td>${r.cluster_id}</td>
+      <td><b>${esc(c.name||"")}</b></td>
+      <td class="muted">${esc((c.definition||"").slice(0,90))}…</td>
+      <td>${r.n_evidence}</td><td class="muted">${esc(r.model||"")}</td>
+      <td><button class="btn small primary" onclick="reviewSnapshot(${r.id},'approve')">批准</button>
+          <button class="btn small danger" onclick="reviewSnapshot(${r.id},'reject')">驳回</button></td></tr>`;}).join("")+"</table>"
+    :'<div class="muted">无待审快照</div>';
   const q=await api("/api/queue");
   $("#queue").innerHTML=q.length?`<table><tr><th>别名</th><th>类型</th><th>来源</th><th>置信度</th><th>研究者</th><th>操作</th></tr>`+
     q.map(r=>`<tr><td>${esc(r.alias)}</td><td>${r.alias_type}</td><td>${r.source}</td>
@@ -381,6 +435,12 @@ async function loadAdmin(){
 }
 async function verifyAlias(id,ok){
   await api(`/api/alias/${id}/verify`,{method:"POST",body:JSON.stringify({verified:ok,by:state.user})});
+  loadAdmin();
+}
+async function reviewSnapshot(id,action){
+  const by=prompt("操作者署名（留痕）：",state.user)||state.user;
+  if(action==="approve"&&!confirm("批准意味着认可该 LLM 合成内容已经人工核对。确认批准？"))return;
+  await api(`/api/snapshot/${id}/review`,{method:"POST",body:JSON.stringify({action,by})});
   loadAdmin();
 }
 

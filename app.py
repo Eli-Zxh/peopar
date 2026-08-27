@@ -1,4 +1,4 @@
-"""百官行述 · 本地应用（零依赖：标准库 http.server + sqlite3）。
+"""Researcher Atlas · 本地应用（零依赖：标准库 http.server + sqlite3）。
 
 启动：python3 app.py  →  http://127.0.0.1:8765
 """
@@ -51,7 +51,317 @@ class API:
         path = ROOT / "data" / f"graph_{domain}.json"
         if not path.exists():
             return {"error": f"图谱未生成：请先运行 python3 analyze/graph.py {domain}"}
-        return json.loads(path.read_text(encoding="utf-8"))
+        g = json.loads(path.read_text(encoding="utf-8"))
+        # 方向名由最新快照驱动：合并簇名与快照审阅状态，供可视化按研究方向命名
+        meta = {r["id"]: (r["name"], r["review_status"], r["display"]) for r in conn.execute(
+            """SELECT c.id, c.name, c.display,
+                      (SELECT s.review_status FROM snapshots s
+                       WHERE s.cluster_id=c.id AND s.status!='superseded'
+                       ORDER BY s.id DESC LIMIT 1) AS review_status
+               FROM clusters c WHERE c.domain_id=?""", (domain,))}
+        for c in g.get("clusters", []):
+            name, review, display = meta.get(c.get("cluster_id"), (None, None, "normal"))
+            c["name"] = name
+            c["snap_review"] = review
+            c["display"] = display
+        return g
+
+    @staticmethod
+    def health():
+        return {"ok": True, "app": "peopar", "version": "0.2"}
+
+    @staticmethod
+    def latest_clusters(conn, domain, limit=None, min_size=3):
+        """该域最新批次的簇（方向簇只增不改，展示用最新批次）。
+        只取规模 ≥min_size 的 top limit 个主要方向，避免高度分散的小簇淹没视图。"""
+        q = """SELECT c.* FROM clusters c
+               JOIN (SELECT cluster_id FROM author_clusters
+                     GROUP BY cluster_id HAVING COUNT(*)>=?) s ON s.cluster_id=c.id
+               WHERE c.domain_id=? AND c.batch_id=
+                 (SELECT MAX(batch_id) FROM clusters WHERE domain_id=?)
+               ORDER BY (SELECT COUNT(*) FROM author_clusters ac WHERE ac.cluster_id=c.id) DESC"""
+        if limit:
+            q += f" LIMIT {int(limit)}"
+        return conn.execute(q, (min_size, domain, domain)).fetchall()
+
+    @staticmethod
+    def directions(conn, domain):
+        """方向聚合图：方向（簇）为节点，方向间共享论文为边；节点大小=规模/热度。
+        只展示主要方向（规模 top 40，≥3 人），小簇不进入聚合视图。"""
+        clusters = API.latest_clusters(conn, domain, limit=40)
+        if not clusters:
+            return {"error": f"该域暂无方向簇：请先运行 python3 analyze/graph.py {domain}"}
+        cids = [c["id"] for c in clusters]
+        ph = ",".join("?" * len(cids))
+        cur_year = 2026
+        recent_from = cur_year - 2
+        stats = {}
+        for r in conn.execute(
+                f"""SELECT ac.cluster_id,
+                           COUNT(DISTINCT pa.paper_id) AS papers,
+                           COUNT(DISTINCT CASE WHEN p.year>=? THEN pa.paper_id END) AS recent
+                    FROM author_clusters ac
+                    JOIN paper_authors pa ON pa.author_id=ac.author_id
+                    JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+                    JOIN papers p ON p.id=pa.paper_id
+                    WHERE ac.cluster_id IN ({ph})
+                    GROUP BY ac.cluster_id""",
+                [recent_from, domain] + cids):
+            stats[r["cluster_id"]] = dict(r)
+        cit = {}
+        for r in conn.execute(
+                f"""SELECT cluster_id, SUM(c) AS citations FROM (
+                       SELECT DISTINCT ac.cluster_id, p.cited_by_count AS c
+                       FROM author_clusters ac
+                       JOIN paper_authors pa ON pa.author_id=ac.author_id
+                       JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+                       JOIN papers p ON p.id=pa.paper_id
+                       WHERE ac.cluster_id IN ({ph}))
+                    GROUP BY cluster_id""",
+                [domain] + cids):
+            cit[r["cluster_id"]] = r["citations"] or 0
+        size_map = {}
+        for r in conn.execute(
+                f"SELECT cluster_id, COUNT(*) n FROM author_clusters WHERE cluster_id IN ({ph}) GROUP BY cluster_id",
+                cids):
+            size_map[r["cluster_id"]] = r["n"]
+        top = {}
+        for r in conn.execute(
+                f"""SELECT ac.cluster_id, a.id, a.name_display, a.name_zh, a.tier,
+                           COUNT(DISTINCT pa.paper_id) AS np
+                    FROM author_clusters ac
+                    JOIN authors a ON a.id=ac.author_id
+                    LEFT JOIN paper_authors pa ON pa.author_id=a.id
+                    LEFT JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+                    WHERE ac.cluster_id IN ({ph})
+                    GROUP BY ac.cluster_id, a.id
+                    ORDER BY ac.cluster_id, np DESC""",
+                [domain] + cids):
+            top.setdefault(r["cluster_id"], []).append(
+                {"id": r["id"], "name": r["name_display"], "zh": r["name_zh"],
+                 "tier": r["tier"], "papers": r["np"]})
+        snap = {}
+        for r in conn.execute(
+                f"""SELECT s.cluster_id, s.review_status FROM snapshots s
+                    WHERE s.cluster_id IN ({ph}) AND s.status!='superseded'
+                    ORDER BY s.id DESC""", cids):
+            snap.setdefault(r["cluster_id"], r["review_status"])
+        directions = []
+        for c in clusters:
+            st = stats.get(c["id"], {})
+            directions.append({
+                "cluster_id": c["id"], "label": c["label"], "name": c["name"],
+                "display": c["display"],
+                "size": size_map.get(c["id"], 0),
+                "papers": st.get("papers", 0), "recent": st.get("recent", 0),
+                "citations": cit.get(c["id"], 0),
+                "snap_review": snap.get(c["id"]),
+                "top_authors": (top.get(c["id"]) or [])[:5],
+            })
+        links = []
+        seen = set()
+        for r in conn.execute(
+                f"""SELECT ac1.cluster_id AS c1, ac2.cluster_id AS c2, COUNT(DISTINCT pa.paper_id) AS n
+                    FROM author_clusters ac1
+                    JOIN paper_authors pa ON pa.author_id=ac1.author_id
+                    JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+                    JOIN author_clusters ac2 ON ac2.author_id=pa.author_id AND ac2.cluster_id!=ac1.cluster_id
+                    WHERE ac1.cluster_id IN ({ph}) AND ac2.cluster_id IN ({ph})
+                    GROUP BY ac1.cluster_id, ac2.cluster_id HAVING n>=2""",
+                [domain] + cids + cids):
+            k = (r["c1"], r["c2"]) if r["c1"] < r["c2"] else (r["c2"], r["c1"])
+            if k in seen:
+                continue
+            seen.add(k)
+            links.append({"source": r["c1"], "target": r["c2"], "shared_papers": r["n"]})
+        directions.sort(key=lambda d: -d["size"])
+        return {"domain": domain, "directions": directions, "links": links}
+
+    @staticmethod
+    def direction_researchers(conn, cid):
+        """方向 → 研究者清单：该方向的核心研究者（画像/机构/代表作/联系线索）。"""
+        c = conn.execute("SELECT * FROM clusters WHERE id=?", (cid,)).fetchone()
+        if not c:
+            return {"error": "簇不存在"}
+        members = conn.execute(
+            """SELECT a.id, a.name_display, a.name_zh, a.tier, a.orcid, a.openalex_id,
+                      COUNT(DISTINCT pa.paper_id) AS papers,
+                      (SELECT COUNT(DISTINCT pa2.paper_id) FROM paper_authors pa2
+                       JOIN paper_domains pd2 ON pd2.paper_id=pa2.paper_id AND pd2.domain_id=?
+                       WHERE pa2.author_id=a.id) AS domain_papers
+               FROM author_clusters ac
+               JOIN authors a ON a.id=ac.author_id
+               LEFT JOIN paper_authors pa ON pa.author_id=a.id
+               WHERE ac.cluster_id=?
+               GROUP BY a.id ORDER BY domain_papers DESC, a.name_display LIMIT 60""",
+            (c["domain_id"], cid)).fetchall()
+        researchers = []
+        for m in members:
+            aff = conn.execute(
+                """SELECT institution, start_year, end_year, source_tag, verified FROM affiliations
+                   WHERE author_id=? ORDER BY (verified=1) DESC, source_tag='web' DESC, start_year
+                   LIMIT 1""", (m["id"],)).fetchone()
+            snap = conn.execute(
+                """SELECT id, content, review_status, generated_at FROM author_snapshots
+                   WHERE author_id=? AND status!='superseded' ORDER BY id DESC LIMIT 1""",
+                (m["id"],)).fetchone()
+            snap_out = None
+            if snap:
+                try:
+                    snap_out = {**json.loads(snap["content"]), "review_status": snap["review_status"]}
+                except json.JSONDecodeError:
+                    snap_out = {"review_status": snap["review_status"]}
+            reps = conn.execute(
+                """SELECT p.id, p.title, p.year, p.pmid, p.cited_by_count FROM paper_authors pa
+                   JOIN papers p ON p.id=pa.paper_id
+                   JOIN paper_domains pd ON pd.paper_id=p.id AND pd.domain_id=?
+                   WHERE pa.author_id=? ORDER BY p.cited_by_count DESC LIMIT 3""",
+                (c["domain_id"], m["id"])).fetchall()
+            researchers.append({
+                "id": m["id"], "name": m["name_display"], "zh": m["name_zh"],
+                "tier": m["tier"], "papers": m["domain_papers"],
+                "institution": dict(aff) if aff else None,
+                "snapshot": snap_out,
+                "representative": [dict(r) for r in reps],
+                "contact": {"orcid": m["orcid"], "openalex_id": m["openalex_id"]},
+            })
+        return {"cluster_id": cid, "name": c["name"], "label": c["label"],
+                "display": c["display"], "domain": c["domain_id"], "researchers": researchers}
+
+    @staticmethod
+    def trends(conn, domain):
+        """热点时间演化：方向×年份论文分布 + 近三年活跃榜（主要方向 top 40）。"""
+        clusters = API.latest_clusters(conn, domain, limit=40)
+        cids = [c["id"] for c in clusters]
+        if not cids:
+            return {"error": "该域暂无方向簇"}
+        ph = ",".join("?" * len(cids))
+        cur_year = 2026
+        series = {}
+        for r in conn.execute(
+                f"""SELECT ac.cluster_id, p.year, COUNT(DISTINCT pa.paper_id) AS n
+                    FROM author_clusters ac
+                    JOIN paper_authors pa ON pa.author_id=ac.author_id
+                    JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+                    JOIN papers p ON p.id=pa.paper_id
+                    WHERE ac.cluster_id IN ({ph}) AND p.year IS NOT NULL
+                    GROUP BY ac.cluster_id, p.year""",
+                [domain] + cids):
+            series.setdefault(r["cluster_id"], {})[r["year"]] = r["n"]
+        out = []
+        for c in clusters:
+            years = series.get(c["id"], {})
+            if not years:
+                continue
+            recent = sum(v for y, v in years.items() if y >= cur_year - 2)
+            prev = sum(v for y, v in years.items() if cur_year - 5 <= y < cur_year - 2)
+            out.append({
+                "cluster_id": c["id"], "label": c["label"], "name": c["name"],
+                "display": c["display"], "years": years,
+                "recent": recent, "prev": prev,
+                "growth": (recent - prev) / prev if prev else (1.0 if recent else 0.0),
+            })
+        out.sort(key=lambda d: -d["recent"])
+        return {"domain": domain, "series": out[:20]}
+
+    @staticmethod
+    def author_snapshot(conn, aid):
+        s = conn.execute(
+            """SELECT s.*, a.name_display, a.name_zh FROM author_snapshots s
+               JOIN authors a ON a.id=s.author_id
+               WHERE s.author_id=? AND s.status!='superseded' ORDER BY s.id DESC LIMIT 1""",
+            (aid,)).fetchone()
+        if not s:
+            return None
+        info = dict(s)
+        try:
+            content = json.loads(s["content"])
+            info["content"] = content
+        except json.JSONDecodeError:
+            content = {}
+            info["content"] = {"raw": s["content"]}
+        # 代表论文从 content.representative_paper_ids 解析（作者画像不写 evidence 表）
+        reps = content.get("representative_paper_ids", [])
+        info["evidence"] = []
+        if reps:
+            ph = ",".join("?" * len(reps))
+            info["evidence"] = rows_to_list(conn.execute(
+                f"""SELECT 'representative' AS role, p.id AS paper_id, p.title, p.year, p.journal,
+                           p.pmid, p.doi, p.cited_by_count, p.retraction_status
+                    FROM papers p WHERE p.id IN ({ph})
+                    ORDER BY CASE p.id {"".join(f" WHEN ? THEN {i}" for i in range(len(reps)))} END""",
+                reps + reps))
+        return info
+
+    @staticmethod
+    def judgments(conn, status=None):
+        q = "SELECT * FROM judgments"
+        rows = conn.execute(q + (" WHERE status=?" if status else "") + " ORDER BY id",
+                            (status,) if status else ()).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["proposal"] = json.loads(r["proposal"])
+            except json.JSONDecodeError:
+                pass
+            out.append(d)
+        return out
+
+    @staticmethod
+    def webvpn_imports(conn, domain=None):
+        q = "SELECT * FROM webvpn_imports"
+        rows = conn.execute(q + (" WHERE domain_id=?" if domain else "") + " ORDER BY id DESC",
+                            (domain,) if domain else ()).fetchall()
+        return rows_to_list(rows)
+
+    @staticmethod
+    def affiliation_queue(conn):
+        return rows_to_list(conn.execute(
+            """SELECT af.id, af.author_id, a.name_display, a.name_zh, af.institution, af.source_tag,
+                      af.source_url, af.note, af.confidence
+               FROM affiliations af JOIN authors a ON a.id=af.author_id
+               WHERE af.source_tag='web' AND af.verified=0 ORDER BY af.id LIMIT 200"""))
+
+    @staticmethod
+    def verify_affiliation(conn, aff_id, body):
+        by = body.get("by", "user")
+        row = conn.execute("SELECT author_id FROM affiliations WHERE id=?", (aff_id,)).fetchone()
+        if not row:
+            return {"error": "履历不存在"}
+        conn.execute("UPDATE affiliations SET verified=1 WHERE id=?", (aff_id,))
+        audit(conn, f"user:{by}", "affiliation.verify", "author", row["author_id"], {"aff_id": aff_id})
+        conn.commit()
+        return {"ok": True}
+
+    @staticmethod
+    def webvpn_import(conn, body):
+        from ingest.webvpn_import import import_records, parse_ris, parse_scopus_csv
+        source = body.get("source")
+        domain = body.get("domain")
+        content = body.get("content", "")
+        if source not in ("scopus", "cnki", "wanfang") or not content:
+            return {"error": "需要 source（scopus|cnki|wanfang）与 content"}
+        fmt = body.get("format") or ("csv" if source == "scopus" else "ris")
+        records = parse_scopus_csv(content) if fmt == "csv" else parse_ris(content)
+        if not records:
+            return {"error": "未解析到题录，请检查导出格式"}
+        import hashlib
+        h = hashlib.sha256(content.encode("utf-8")).hexdigest()[:24]
+        dup = conn.execute("SELECT id FROM webvpn_imports WHERE file_hash=?", (h,)).fetchone()
+        if dup:
+            return {"ok": True, "duplicate": True, "batch_id": dup["id"], "records": len(records)}
+        n_new, n_dup, n_authors = import_records(conn, domain, records, source, body.get("query", ""))
+        cur = conn.execute(
+            """INSERT INTO webvpn_imports(domain_id, source, file_name, file_hash, query,
+               n_records, n_new, n_dup) VALUES(?,?,?,?,?,?,?,?)""",
+            (domain, source, body.get("file_name"), h, body.get("query"), len(records), n_new, n_dup))
+        from ingest.common import audit
+        audit(conn, f"user:{body.get('by', 'user')}", "webvpn.import", "domain", domain,
+              {"source": source, "records": len(records), "new": n_new, "dup": n_dup})
+        conn.commit()
+        return {"ok": True, "batch_id": cur.lastrowid, "records": len(records),
+                "n_new": n_new, "n_dup": n_dup, "n_authors": n_authors}
 
     @staticmethod
     def author(conn, aid):
@@ -154,6 +464,55 @@ class API:
                JOIN authors a ON a.id=al.author_id
                WHERE al.verified=0 ORDER BY al.confidence DESC, al.id LIMIT 200"""))
 
+    @staticmethod
+    def snapshots(conn, domain=None):
+        q = """SELECT s.id, s.cluster_id, c.domain_id, s.content, s.model, s.prompt_ver,
+                      s.review_status, s.reviewed_by, s.generated_at,
+                      (SELECT COUNT(*) FROM evidence e WHERE e.snapshot_id=s.id) AS n_evidence
+               FROM snapshots s JOIN clusters c ON c.id=s.cluster_id
+               WHERE s.status!='superseded'"""
+        rows = conn.execute(q + (" AND c.domain_id=? ORDER BY s.id DESC" if domain
+                                 else " ORDER BY s.id DESC"),
+                            (domain,) if domain else ()).fetchall()
+        out = []
+        for r in rows:
+            d = dict(r)
+            try:
+                d["content"] = json.loads(r["content"])
+            except json.JSONDecodeError:
+                d["content"] = {"raw": r["content"]}
+            out.append(d)
+        return out
+
+    @staticmethod
+    def cluster_snapshot(conn, cluster_id):
+        s = conn.execute(
+            """SELECT s.*, c.domain_id FROM snapshots s JOIN clusters c ON c.id=s.cluster_id
+               WHERE s.cluster_id=? AND s.status!='superseded' ORDER BY s.id DESC LIMIT 1""",
+            (cluster_id,)).fetchone()
+        if not s:
+            return None
+        info = dict(s)
+        try:
+            info["content"] = json.loads(s["content"])
+        except json.JSONDecodeError:
+            info["content"] = {"raw": s["content"]}
+        info["evidence"] = rows_to_list(conn.execute(
+            """SELECT e.role, p.id AS paper_id, p.title, p.year, p.journal, p.pmid, p.doi,
+                      p.cited_by_count, p.retraction_status
+               FROM evidence e JOIN papers p ON p.id=e.paper_id
+               WHERE e.snapshot_id=? ORDER BY e.role, p.cited_by_count DESC""", (s["id"],)))
+        return info
+
+    @staticmethod
+    def snapshot_queue(conn):
+        return rows_to_list(conn.execute(
+            """SELECT s.id, s.cluster_id, c.domain_id, s.content, s.model, s.generated_at,
+                      (SELECT COUNT(*) FROM evidence e WHERE e.snapshot_id=s.id) AS n_evidence
+               FROM snapshots s JOIN clusters c ON c.id=s.cluster_id
+               WHERE s.review_status='pending' AND s.status!='superseded'
+               ORDER BY s.id LIMIT 100"""))
+
     # ---------- 写操作（全部留痕） ----------
 
     @staticmethod
@@ -221,6 +580,74 @@ class API:
         conn.commit()
         return {"ok": True}
 
+    @staticmethod
+    def review_snapshot(conn, sid, body):
+        action = body.get("action")
+        if action not in ("approve", "reject"):
+            return {"error": "action 必须是 approve 或 reject"}
+        by = body.get("by", "user")
+        row = conn.execute("SELECT id, review_status FROM snapshots WHERE id=?", (sid,)).fetchone()
+        if not row:
+            return {"error": "快照不存在"}
+        status = "approved" if action == "approve" else "rejected"
+        conn.execute("UPDATE snapshots SET review_status=?, reviewed_by=?, reviewed_at=datetime('now') WHERE id=?",
+                     (status, by, sid))
+        audit(conn, f"user:{by}", f"snapshot.{action}", "snapshot", sid, None)
+        conn.commit()
+        return {"ok": True}
+
+    @staticmethod
+    def review_author_snapshot(conn, sid, body):
+        action = body.get("action")
+        if action not in ("approve", "reject"):
+            return {"error": "action 必须是 approve 或 reject"}
+        by = body.get("by", "user")
+        row = conn.execute("SELECT id, review_status FROM author_snapshots WHERE id=?", (sid,)).fetchone()
+        if not row:
+            return {"error": "作者快照不存在"}
+        status = "approved" if action == "approve" else "rejected"
+        conn.execute("UPDATE author_snapshots SET review_status=?, reviewed_by=?, reviewed_at=datetime('now') WHERE id=?",
+                     (status, by, sid))
+        audit(conn, f"user:{by}", f"author_snapshot.{action}", "author",
+              row["author_id"], {"snapshot_id": sid})
+        conn.commit()
+        return {"ok": True}
+
+    @staticmethod
+    def judgment_decide(conn, jid, body):
+        action = body.get("action")
+        if action not in ("accept", "reject"):
+            return {"error": "action 必须是 accept 或 reject"}
+        status = "accepted" if action == "accept" else "rejected"
+        by = body.get("by", "user")
+        row = conn.execute("SELECT * FROM judgments WHERE id=?", (jid,)).fetchone()
+        if not row:
+            return {"error": "提案不存在"}
+        if row["status"] != "pending":
+            return {"error": f"提案已裁决（{row['status']}）"}
+        if action == "accept":
+            if row["jtype"] == "noise_cluster" and row["entity_type"] == "cluster":
+                conn.execute("UPDATE clusters SET display='excluded' WHERE id=?", (row["entity_id"],))
+            elif row["jtype"] == "alias_candidate" and row["entity_type"] == "author":
+                p = json.loads(row["proposal"] or "{}")
+                alias = p.get("alias")
+                if alias:
+                    conn.execute(
+                        """INSERT OR IGNORE INTO author_aliases(author_id, alias, alias_type, source,
+                           confidence, verified) VALUES(?,?,?, 'llm', 0.6, 0)""",
+                        (row["entity_id"], alias, p.get("alias_type", "hanzi")))
+        conn.execute(
+            "UPDATE judgments SET status=?, decided_by=?, decided_at=datetime('now'), decision_note=? WHERE id=?",
+            (status, by, body.get("note"), jid))
+        conn.execute(
+            """UPDATE judgments SET status='superseded' WHERE jtype=? AND entity_type=? AND entity_id=?
+               AND status='accepted' AND id!=?""",
+            (row["jtype"], row["entity_type"], row["entity_id"], jid))
+        audit(conn, f"user:{by}", f"judgment.{action}", row["entity_type"], row["entity_id"],
+              {"judgment_id": jid, "jtype": row["jtype"], "note": body.get("note")})
+        conn.commit()
+        return {"ok": True}
+
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "peopar/0.1"
@@ -240,42 +667,85 @@ class Handler(BaseHTTPRequestHandler):
     def _json(self, obj):
         self._send(200, json.dumps(obj, ensure_ascii=False))
 
+    def _safe(self, fn):
+        """执行 API 调用；异常转为 500 JSON，避免线程崩溃。"""
+        try:
+            return fn()
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            try:
+                self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}))
+            except Exception:
+                pass
+            return None
+
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         path, qs = u.path, urllib.parse.parse_qs(u.query)
         conn = connect()
         init_db(conn)
         try:
-            if path == "/":
-                self._send(200, (WEB / "index.html").read_text(encoding="utf-8"),
-                           "text/html; charset=utf-8")
-            elif path.startswith("/static/"):
-                f = STATIC / path[len("/static/"):].replace("..", "")
-                if f.exists():
-                    ctype = "application/javascript" if f.suffix == ".js" else "application/octet-stream"
-                    self._send(200, f.read_bytes(), ctype)
+            try:
+                if path == "/":
+                    self._send(200, (WEB / "index.html").read_text(encoding="utf-8"),
+                               "text/html; charset=utf-8")
+                elif path.startswith("/static/"):
+                    f = STATIC / path[len("/static/"):].replace("..", "")
+                    if f.exists():
+                        ctype = "application/javascript" if f.suffix == ".js" else "application/octet-stream"
+                        self._send(200, f.read_bytes(), ctype)
+                    else:
+                        self._send(404, "not found", "text/plain")
+                elif path == "/api/domains":
+                    self._json(API.domains(conn))
+                elif path == "/api/health":
+                    self._json(API.health())
+                elif path == "/api/directions":
+                    self._json(API.directions(conn, qs.get("domain", [""])[0]))
+                elif path == "/api/trends":
+                    self._json(API.trends(conn, qs.get("domain", [""])[0]))
+                elif path == "/api/judgments":
+                    self._json(API.judgments(conn, qs.get("status", [None])[0]))
+                elif path == "/api/webvpn-imports":
+                    self._json(API.webvpn_imports(conn, qs.get("domain", [None])[0]))
+                elif path == "/api/affiliation-queue":
+                    self._json(API.affiliation_queue(conn))
+                elif path == "/api/graph":
+                    self._json(API.graph(conn, qs.get("domain", [""])[0]))
+                elif path == "/api/search":
+                    self._json(API.search(conn, qs.get("q", [""])[0]))
+                elif path == "/api/queue":
+                    self._json(API.queue(conn))
+                elif path == "/api/snapshots":
+                    self._json(API.snapshots(conn, qs.get("domain", [None])[0]))
+                elif path == "/api/snapshot-queue":
+                    self._json(API.snapshot_queue(conn))
+                elif path == "/api/events":
+                    self._json(API.events(conn))
+                elif m := re.fullmatch(r"/api/direction/(\d+)/researchers", path):
+                    self._json(API.direction_researchers(conn, int(m.group(1))))
+                elif m := re.fullmatch(r"/api/cluster/(\d+)/snapshot", path):
+                    self._json(API.cluster_snapshot(conn, int(m.group(1))) or {})
+                elif m := re.fullmatch(r"/api/author/(BG\d+)", path):
+                    self._json(API.author(conn, m.group(1)))
+                elif m := re.fullmatch(r"/api/author/(BG\d+)/snapshot", path):
+                    self._json(API.author_snapshot(conn, m.group(1)) or {})
+                elif m := re.fullmatch(r"/api/event/(\d+)", path):
+                    self._json(API.event(conn, int(m.group(1))))
+                elif m := re.fullmatch(r"/api/audit", path):
+                    self._json(rows_to_list(conn.execute(
+                        "SELECT ts, actor, action, entity_type, entity_id, detail FROM audit_log "
+                        "ORDER BY id DESC LIMIT 120")))
                 else:
                     self._send(404, "not found", "text/plain")
-            elif path == "/api/domains":
-                self._json(API.domains(conn))
-            elif path == "/api/graph":
-                self._json(API.graph(conn, qs.get("domain", [""])[0]))
-            elif path == "/api/search":
-                self._json(API.search(conn, qs.get("q", [""])[0]))
-            elif path == "/api/queue":
-                self._json(API.queue(conn))
-            elif path == "/api/events":
-                self._json(API.events(conn))
-            elif m := re.fullmatch(r"/api/author/(BG\d+)", path):
-                self._json(API.author(conn, m.group(1)))
-            elif m := re.fullmatch(r"/api/event/(\d+)", path):
-                self._json(API.event(conn, int(m.group(1))))
-            elif m := re.fullmatch(r"/api/audit", path):
-                self._json(rows_to_list(conn.execute(
-                    "SELECT ts, actor, action, entity_type, entity_id, detail FROM audit_log "
-                    "ORDER BY id DESC LIMIT 120")))
-            else:
-                self._send(404, "not found", "text/plain")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                try:
+                    self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}))
+                except Exception:
+                    pass
         finally:
             conn.close()
 
@@ -286,18 +756,36 @@ class Handler(BaseHTTPRequestHandler):
         conn = connect()
         init_db(conn)
         try:
-            if m := re.fullmatch(r"/api/alias/(\d+)/verify", path):
-                self._json(API.verify_alias(conn, int(m.group(1)), body))
-            elif m := re.fullmatch(r"/api/author/(BG\d+)/hanzi", path):
-                self._json(API.add_hanzi(conn, m.group(1), body))
-            elif m := re.fullmatch(r"/api/flag/(\d+)/confirm-l0", path):
-                self._json(API.confirm_l0(conn, int(m.group(1)), body))
-            elif m := re.fullmatch(r"/api/flag/(\d+)/dismiss", path):
-                self._json(API.dismiss_flag(conn, int(m.group(1)), body))
-            elif m := re.fullmatch(r"/api/event/(\d+)/confirm", path):
-                self._json(API.confirm_event(conn, int(m.group(1)), body))
-            else:
-                self._send(404, "not found", "text/plain")
+            try:
+                if m := re.fullmatch(r"/api/alias/(\d+)/verify", path):
+                    self._json(API.verify_alias(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/author/(BG\d+)/hanzi", path):
+                    self._json(API.add_hanzi(conn, m.group(1), body))
+                elif m := re.fullmatch(r"/api/flag/(\d+)/confirm-l0", path):
+                    self._json(API.confirm_l0(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/flag/(\d+)/dismiss", path):
+                    self._json(API.dismiss_flag(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/event/(\d+)/confirm", path):
+                    self._json(API.confirm_event(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/snapshot/(\d+)/review", path):
+                    self._json(API.review_snapshot(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/author-snapshot/(\d+)/review", path):
+                    self._json(API.review_author_snapshot(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/judgment/(\d+)/decide", path):
+                    self._json(API.judgment_decide(conn, int(m.group(1)), body))
+                elif path == "/api/webvpn/import":
+                    self._json(API.webvpn_import(conn, body))
+                elif m := re.fullmatch(r"/api/affiliation/(\d+)/verify", path):
+                    self._json(API.verify_affiliation(conn, int(m.group(1)), body))
+                else:
+                    self._send(404, "not found", "text/plain")
+            except Exception as e:
+                import traceback
+                traceback.print_exc()
+                try:
+                    self._send(500, json.dumps({"error": f"{type(e).__name__}: {e}"}))
+                except Exception:
+                    pass
         finally:
             conn.close()
 
@@ -306,7 +794,7 @@ def main():
     conn = connect()
     init_db(conn)
     conn.close()
-    print(f"百官行述 已启动 → http://127.0.0.1:{PORT}")
+    print(f"Researcher Atlas 已启动 → http://127.0.0.1:{PORT}")
     print("Ctrl+C 退出")
     ThreadingHTTPServer(("127.0.0.1", PORT), Handler).serve_forever()
 

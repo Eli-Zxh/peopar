@@ -1,0 +1,777 @@
+{
+ "domain": "neuroling",
+ "prompt_ver": "author_profile.md@v1-20260827",
+ "model": "peopar-agent@2026-08-27 (workflow batch1)",
+ "author_snapshots": [
+  {
+   "author_id": "BG000001",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2010、2015、2026年在 University of Minnesota 署名。合作记录显示其与 James Cleary（3篇）、Karen H. Ashe（3篇）、Mary Jo LaDu（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 James Cleary、Karen H. Ashe 各共著3篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000002",
+   "focus": "老年临床研究中心Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006、2010、2026年在 Geriatric Research Education and Clinical Center 署名。合作记录显示其与 James Cleary（3篇）、Sylvain Lesné（3篇）、Dominic M. Walsh（2篇）、Karen H. Ashe（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 James Cleary、Sylvain Lesné 各共著3篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000003",
+   "focus": "伊利诺伊大学芝加哥分校Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2009、2010、2026年在 University of Illinois Chicago 署名。合作记录显示其与 Mary Jo LaDu（3篇）、James Cleary（2篇）、Karen H. Ashe（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Mary Jo LaDu 共著3篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000004",
+   "focus": "都柏林大学学院Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2008、2010、2014、2026年在 University College Dublin 署名。合作记录显示其与 Dominic M. Walsh（3篇）、Igor Klyubin（2篇）、Dennis J. Selkoe（2篇）、Michael J. Rowan（2篇）、Karen H. Ashe（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Dominic M. Walsh 共著3篇，并与 Dennis J. Selkoe、Michael J. Rowan 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000006",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2010–2024年间主要在 University of Minnesota 及 Center for Neurosciences、Berman Center for Outcomes and Clinical Research 等署名。合作记录显示其与 Sylvain Lesné（16篇）、Fatou Amar（5篇）、Michael K. Lee（5篇）、Michael LaCroix（5篇）、Gabriel Boyle（5篇）、Karen H. Ashe（4篇）等构成密集共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Sylvain Lesné 共著16篇，为本记录中最高合作强度，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络核心位置（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000007",
+   "focus": "明尼苏达大学Aβ*56与阿尔茨海默病研究（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其署名跨越法国 Centre National de la Recherche Scientifique、Université de Caen Normandie、Cyceron 及美国 University of Minnesota、Howard Hughes Medical Institute 等（2000–2026年）。合作记录显示其与 Mathew A. Sherman（16篇）、Denis Vivien（13篇）、Eric T. MacKenzie（12篇）、Alain Buisson（11篇）、Karen H. Ashe（10篇）等构成密集共著网络，是多个合作子网的交汇节点。输入含 L0（pending）标记：Science 2022 调查报道点名；多篇论文被 PubMed 标注撤稿/更正。L0 定性须人工确认。上述撤稿/更正信息均源自输入标记，未经独立核实。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Mathew A. Sherman 共著16篇、与 Karen H. Ashe 共著10篇，构成围绕其本人的多机构密集合作网络（据输入）。",
+    "输入含 L0（pending）标记，事件为 Lesné Aβ*56 学术质疑事件，定性须人工确认（据输入，不另作推断）。"
+   ],
+   "risks": "L0（pending）：Science 2022 调查报道点名；多篇论文被 PubMed 标注撤稿/更正。L0 定性须人工确认。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000008",
+   "focus": "伊利诺伊大学芝加哥分校Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2009、2010、2026年在 University of Illinois Chicago 署名。合作记录显示其与 Lisa M. Jungbauer（3篇）、James Cleary（2篇）、Karen H. Ashe（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Lisa M. Jungbauer 共著3篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000010",
+   "focus": "明尼苏达大学Aβ*56研究网络核心成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006–2026年间在 University of Minnesota、Minneapolis VA Medical Center、Geriatric Research Education and Clinical Center、Society for Neuroscience 等署名。合作记录显示其与 Sylvain Lesné（10篇）、Linda Kotilinek（7篇）、James Cleary（6篇）、Mathew A. Sherman（4篇）等构成密集共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Sylvain Lesné 共著10篇、与 Linda Kotilinek 共著7篇，是 Lesné Aβ*56 事件标记论文(43)相关合作网络的核心节点（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000011",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006–2016年间在 University of Minnesota、Geriatric Research Education and Clinical Center、Veterans Health Administration 等署名。合作记录显示其与 Karen H. Ashe（6篇）、Sylvain Lesné（5篇）、Linda Kotilinek（3篇）、J. Hofmeister（3篇）、Miranda N. Reed（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Karen H. Ashe 共著6篇、与 Sylvain Lesné 共著5篇，处于与 Lesné Aβ*56 事件标记论文(43)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(43)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000030",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 及 University of Minnesota System 署名。合作记录显示其与 Jennifer L. Brown（3篇）、Ross Pelzel（3篇）、Sylvain Lesné（3篇）、Mathew A. Sherman（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Jennifer L. Brown、Ross Pelzel、Sylvain Lesné、Mathew A. Sherman 各共著3篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000032",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 及 University of Minnesota System 署名。合作记录显示其与 Jennifer L. Brown（3篇）、Damyan W. Hart（3篇）、Sylvain Lesné（3篇）、Mathew A. Sherman（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Jennifer L. Brown、Damyan W. Hart、Sylvain Lesné、Mathew A. Sherman 各共著3篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000033",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2018–2024年间在 University of Minnesota 及 Berman Center for Outcomes and Clinical Research 署名。合作记录显示其与 Sylvain Lesné（5篇）、Mathew A. Sherman（4篇）、Michael K. Lee（3篇）、Michael LaCroix（3篇）、Gabriel Boyle（3篇）、Ross Pelzel（3篇）、Damyan W. Hart（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Sylvain Lesné 共著5篇、与 Mathew A. Sherman 共著4篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000034",
+   "focus": "约翰霍普金斯大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006、2024年在 Johns Hopkins University 署名。合作记录显示其与 Michela Gallagher（2篇）、Austin J. Yang（2篇）、Charles Glabe（2篇）、Rakez Kayed（2篇）、Linda Kotilinek（2篇）、Karen H. Ashe（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Michela Gallagher、Charles Glabe、Rakez Kayed、Karen H. Ashe、Sylvain Lesné 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000035",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2005–2024年间主要在 University of Minnesota 署名。合作记录显示其与 Karen H. Ashe（7篇）、Sylvain Lesné（6篇）、James Cleary（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Karen H. Ashe 共著7篇、与 Sylvain Lesné 共著6篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000036",
+   "focus": "加州大学尔湾Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006–2021年间在 University of California, Irvine、The University of Texas Medical Branch at Galveston、Johns Hopkins University 等署名。合作记录显示其与 Sylvain Lesné（5篇）、Urmi Sengupta（4篇）、Charles Glabe（4篇）、Diana L. Castillo-Carranza（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Sylvain Lesné 共著5篇、与 Charles Glabe 共著4篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000037",
+   "focus": "加州大学尔湾Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2005–2024年间主要在 University of California, Irvine 署名，另涉及 Institute on Aging、King Abdulaziz University。合作记录显示其与 Rakez Kayed（4篇）、Sylvain Lesné（3篇）、Jorge Busciglio（2篇）、Michela Gallagher（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Rakez Kayed 共著4篇、与 Sylvain Lesné 共著3篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000038",
+   "focus": "南加州大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006、2024年在 University of Southern California 署名，2010年在 University of Maryland, Baltimore 署名。合作记录显示其与 Michela Gallagher（2篇）、Charles Glabe（2篇）、Rakez Kayed（2篇）、Linda Kotilinek（2篇）、Ming Teng Koh（2篇）、Karen H. Ashe（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Michela Gallagher、Charles Glabe、Rakez Kayed、Karen H. Ashe、Sylvain Lesné 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000039",
+   "focus": "约翰霍普金斯大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2006、2024年在 Johns Hopkins University 署名。合作记录显示其与 Austin J. Yang（2篇）、Charles Glabe（2篇）、Rakez Kayed（2篇）、Linda Kotilinek（2篇）、Ming Teng Koh（2篇）、Karen H. Ashe（2篇）、Sylvain Lesné（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Austin J. Yang、Charles Glabe、Rakez Kayed、Karen H. Ashe、Sylvain Lesné 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(65)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(65)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000040",
+   "focus": "明尼苏达/华盛顿大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2017–2024年间在 University of Minnesota、Berman Center for Outcomes and Clinical Research、University of Washington 署名。合作记录显示其与 Sylvain Lesné（5篇）、Mathew A. Sherman（5篇）、Michael K. Lee（4篇）、Michael LaCroix（4篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献（据合作记录处于 Lesné 事件共著网络核心，与 Sylvain Lesné、Mathew A. Sherman 各共著5篇）"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000041",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 及 University of Minnesota Medical Center 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000042",
+   "focus": "明尼苏达/UTSW的Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2016–2024年间在 University of Minnesota、Center for Neurosciences、Berman Center for Outcomes and Clinical Research、The University of Texas Southwestern Medical Center 署名。合作记录显示其与 Sylvain Lesné（5篇）、Mathew A. Sherman（5篇）、Michael K. Lee（4篇）、Gabriel Boyle（4篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Sylvain Lesné、Mathew A. Sherman 各共著5篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000043",
+   "focus": "明尼苏达/巴斯克大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 及 University of the Basque Country 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000044",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000045",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000046",
+   "focus": "明尼苏达/约翰霍普金斯Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 University of Minnesota 及 Johns Hopkins University 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000047",
+   "focus": "Ionis等机构Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2022、2024年在 Ionis Pharmaceuticals 及 Structural Analytics 署名。合作记录显示其与 Alfonso Araque（2篇）、Michael K. Lee（2篇）、Michael LaCroix（2篇）、Gabriel Boyle（2篇）、Jennifer L. Brown（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Alfonso Araque、Michael K. Lee、Michael LaCroix、Gabriel Boyle 等各共著2篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000048",
+   "focus": "明尼苏达大学Aβ*56研究网络成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2008年在 Johns Hopkins University 署名，2017–2024年间在 University of Minnesota、Geriatric Research Education and Clinical Center、Minneapolis VA Health Care System 等署名。合作记录显示其与 Sylvain Lesné（5篇）、Mathew A. Sherman（5篇）、Michael LaCroix（4篇）、Gabriel Boyle（4篇）、Alfonso Araque（3篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Sylvain Lesné、Mathew A. Sherman 各共著5篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000049",
+   "focus": "明尼苏达大学Aβ*56研究网络外围成员（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2019年在 University of Minnesota Medical Center 署名，2022、2024年在 University of Minnesota 署名。合作记录显示其与 Michael K. Lee（3篇）、Sylvain Lesné（3篇）、Mathew A. Sherman（3篇）、Tracy Cole（2篇）、Michael LaCroix（2篇）等构成共著网络。输入含 L1（confirmed）标记：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Michael K. Lee、Sylvain Lesné、Mathew A. Sherman 各共著3篇，处于与 Lesné Aβ*56 事件标记论文(6)相关的合作网络（据输入）。"
+   ],
+   "risks": "L1（confirmed）：与事件标记论文(6)存在共同作者关系——仅风险提示，绝非定性。事件：Lesné Aβ*56 学术质疑事件。",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000078",
+   "focus": "法国CNRS理论生物化学实验室研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Centre National de la Recherche Scientifique、Université Paris Cité、Université Paris Sciences et Lettres 及 Laboratoire de Biochimie Théorique 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000079",
+   "focus": "密歇根/多伦多大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2009年在 University of Toronto 及 University of Michigan 署名，2013、2021年在 University of Michigan 署名。合作记录显示其与 Jeffrey Brender 共著2篇，并与多位合作者各共著1篇（输入合作记录）。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Jeffrey Brender 共著2篇，其余合作者多为单篇共著关系（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000080",
+   "focus": "密歇根大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 University of Michigan 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000081",
+   "focus": "阿克伦大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 University of Akron 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000082",
+   "focus": "斯特拉斯堡大学化学研究所研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Centre National de la Recherche Scientifique、Institut de Chimie、Université de Strasbourg 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000083",
+   "focus": "波士顿大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Boston University 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000084",
+   "focus": "墨西哥国立自治大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Universidad Nacional Autónoma de México 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000085",
+   "focus": "加州大学圣巴巴拉分校研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2009、2010、2021年在 University of California, Santa Barbara 署名。合作记录显示其与 Guanghong Wei 共著2篇，并与 Andrew I. Jewett、Michael T. Bowers、Carol V. Robinson、Brandon T. Ruotolo、Gal Bitan 等各共著1篇（输入合作记录）。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Guanghong Wei 共著2篇，其余合作者多为单篇共著关系（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000086",
+   "focus": "宾夕法尼亚州立大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Pennsylvania State University 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000087",
+   "focus": "帝国理工/那不勒斯大学研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2021年在 Imperial College London 及 University of Naples Federico II 署名。合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Brianna Hnath、Jiaxing Chen、Štěpán Timr、Birgit Habenstein、Simone Melchionna 各共著1篇，构成大规模国际合著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等10位合作者各共著1篇，处于多机构国际合著网络（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000088",
+   "focus": "特拉维夫大学与NCI等机构研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2010年在 Tel Aviv University、Frederick National Laboratory for Cancer Research、Center for Cancer Research 署名，2021年在 Leidos、Shanghai Jiao Tong University、National Cancer Institute 署名。合作记录显示其与 Yifat Miller（2篇）、Ruth Nussinov（2篇）、Philippe Derreumaux（1篇）、Andrew J. Doig（1篇）等构成共著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Yifat Miller、Ruth Nussinov 各共著2篇，并与 Derreumaux、Doig 等各共著1篇（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000089",
+   "focus": "特拉维夫大学与NCI等机构研究者（输入未含论文）",
+   "summary": "输入记录未含论文条目（papers 为空、未截断），无法逐篇锚定论断；以下内容仅依据合作者、机构与标记字段。机构记录（自动来源、未核实）显示其于2010–2021年间在 Tel Aviv University、Frederick National Laboratory for Cancer Research、Center for Cancer Research、Science Applications International Corporation、Leidos、National Cancer Institute 署名。合作记录显示其与 Yifat Miller（2篇）、Buyong Ma（2篇）、Philippe Derreumaux（1篇）、Andrew J. Doig（1篇）等构成共著网络。输入未含 L0/L1 风险标记。",
+   "key_contributions": [
+    "输入记录未含论文条目，无法列出以论文为锚的成果贡献。",
+    "合作记录确认其与 Yifat Miller、Buyong Ma 各共著2篇，并与 Derreumaux、Doig 等各共著1篇（据输入）。"
+   ],
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000090",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（University of California, Santa Barbara，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000091",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（Ton Duc Thang University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000092",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2021 年机构履历（CNRS、Chimie et Biologie des Membranes et des Nanoobjets、Institut Européen de Chimie et Biologie、Institut Polytechnique de Bordeaux）及与 Philippe Derreumaux、Andrew J. Doig 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000093",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（University of Manchester，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000094",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（University of California, Santa Barbara，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000095",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（Western Washington University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000096",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（Institute for Computational Science and Technology、Polish Academy of Sciences，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000097",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（North Carolina State University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000098",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（North Carolina State University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000099",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Ruth Nussinov、Buyong Ma 各 2 篇共著，与 Philippe Derreumaux 等 8 位研究者各 1 篇共著；机构履历含 Tel Aviv University（2010）、Frederick National Laboratory for Cancer Research（2010）与 Ben-Gurion University of the Negev（2021）。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000100",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），且未提供机构履历（affiliations 为空），无法以 paper_id 锚定任何研究论断。记录仅显示其与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Yifat Miller 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000101",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2021 年机构履历（CNRS、Chimie et Biologie des Membranes et des Nanoobjets、Institut Européen de Chimie et Biologie、Institut Polytechnique de Bordeaux）及与 Philippe Derreumaux、Andrew J. Doig 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000102",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2021 年机构履历（CNRS、Université Paris Cité、Université Paris Sciences et Lettres、Laboratoire de Biochimie Théorique）及与 Philippe Derreumaux、Andrew J. Doig 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000103",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（Pennsylvania State University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000104",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（Pennsylvania State University，2021 年）及与 Philippe Derreumaux、Andrew J. Doig、Fabio Sterpone 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000105",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其机构履历（Forschungszentrum Jülich、Heinrich Heine University Düsseldorf，2016/2021 年）及与 Michael C. Owen、Luitgard Nagel-Steger、David J. Wales、Chris S. Whittleston、Philippe Derreumaux 等研究者的共著关系（各 1 篇）。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000106",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Joan-Emma Shea 共著 2 篇，与 Andrew I. Jewett、Xinju Yang、Wenhui Xi、Dongdong Lin、Yin Luo、Luogang Xie、Philippe Derreumaux 等各 1 篇；机构履历为 Fudan University 与 State Key Laboratory of Surface Physics（2010/2014/2021）。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000107",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2021 年机构履历（CNRS、Université Paris Cité、Université Paris Sciences et Lettres、Laboratoire de Biochimie Théorique）及与 Philippe Derreumaux、Andrew J. Doig、Guanghong Wei 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000108",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录仅提供机构信息（University of Manchester，2021 年）及与 Philippe Derreumaux、Fabio Sterpone、Guanghong Wei 等 10 位研究者各 1 篇的共著关系。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000109",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2021 年机构履历（CNRS、Ton Duc Thang University、Université Paris Cité、Université Paris Sciences et Lettres、Laboratoire de Biochimie Théorique），并与 Andrew J. Doig、Fabio Sterpone、Guanghong Wei、Birgit Strodel、Yifat Miller 等 10 位研究者各 1 篇共著，处于紧密合作网络中心。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000115",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、Eric D. Marsh、David J. Irwin 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000116",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、Eric D. Marsh、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000117",
+   "focus": "神经退行性痴呆的言语词汇数字标志物与病理关联",
+   "summary": "该研究者聚焦路易体痴呆、额颞叶变性（FTLD）、原发进行性失语（PPA）与阿尔茨海默病（AD）的言语及病理特征，如《Cognitive Profile and Markers of Alzheimer Disease-Type Pathology in Patients With Lewy Body Dementias》（43154）与《Lexical and Acoustic Speech Features Relating to Alzheimer Disease Pathology》（47272）。其系统运用自动词法与声学分析刻画言语标志物，代表作包括额颞叶变性词法特征自动分析（42972）、健康成年人词汇与声学特征（43668）及进行性核上性麻痹/皮质基底节综合征的数字言语分析（41140）。其研究贯通生物标志物与神经病理：血浆磷酸化 Tau217 鉴别 AD 与 FTLD 亚型（52388）、FTLD 蛋白病灰白质病理模式（43050）、[18F]PI-2620 结合模式（49639）及乙酰化 Tau-174 CSF 标志物区分 TDP-43 与 tau 病理（1987）。记录显示其长期与 Murray Grossman（14 篇）、Naomi Nevler（9 篇）等宾夕法尼亚大学团队合作，主方向簇权重 18（簇 8769），处于言语—病理交叉方向核心位置。",
+   "key_contributions": "建立路易体痴呆中 AD 型病理的认知特征画像（43154）；证明词汇与声学言语特征可反映 AD 病理负担（47272）；开发额颞叶变性词法特征的自动化分析（42972）；推动血浆 pTau217 用于皮质基底节综合征中 AD 与 FTLD 亚型鉴别（52388）",
+   "risks": "无风险标记",
+   "representative_paper_ids": [
+    43154,
+    47272,
+    42972,
+    52388,
+    43050
+   ]
+  },
+  {
+   "author_id": "BG000118",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000119",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000120",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000121",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年机构信息（Children's Hospital of Philadelphia、University of Pennsylvania），并与 Delia M. Talos、Frances E. Jensen、Kathryn A. Davis、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000122",
+   "focus": "卒中后失语症语言恢复的脑网络机制",
+   "summary": "该研究者聚焦卒中后失语症语言恢复的脑网络机制，以结构网络控制理论（structural network control theory）解释脑损伤后的语言恢复过程（38964）。其进一步揭示颞上回动态网络特性中介脑龄差距对慢性失语严重度的影响（51029），并借助立体脑电图（SEEG）刻画人类颞上沟在视听言语感知中多感觉整合的神经特征（5507）。记录显示其与 Lorenzo Caciagli、Xiaosong He、Leonardo Bonilha、Chris Rorden、Janina Wilmskoetter、Julius Fridriksson 等各 2 篇共著，主方向簇为「卒中后失语症神经机制与康复」（簇 9352，权重 3）。",
+   "key_contributions": "将结构网络控制理论应用于脑损伤后语言恢复研究（38964）；阐明颞上回动态网络特性与脑龄差距对慢性失语严重度的中介路径（51029）；用 SEEG 记录人类颞上沟视听言语感知的多感觉整合神经特征（5507）",
+   "risks": "无风险标记",
+   "representative_paper_ids": [
+    38964,
+    51029,
+    5507
+   ]
+  },
+  {
+   "author_id": "BG000123",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Delia M. Talos、Kathryn A. Davis、Eric D. Marsh、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000124",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其 2019 年于 University of Pennsylvania 的机构信息，并与 Frances E. Jensen、Kathryn A. Davis、Eric D. Marsh、David J. Irwin、Sarah Gourmaud 等 9 位研究者各 1 篇共著。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000145",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Sylvain Lesné、Mathew A. Sherman 各 5 篇共著，与 Megan Larson 4 篇、David A. Bennett 与 Michael LaCroix 与 Gabriel Boyle 各 3 篇；机构履历含 University of Minnesota（2012–2018）与 Columbia University（2018）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000160",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Sylvain Lesné 5 篇共著，与 Fatou Amar、Mathew A. Sherman 各 4 篇，与 David A. Bennett 3 篇；机构履历为 University of Minnesota（2011–2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000161",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 David A. Bennett、Sylvain Lesné 各 2 篇共著，与 Julie A. Schneider、Michael A. Kuskowski、Fabio Benfenati、Megan Larson、Fatou Amar 等各 1 篇；机构履历含 University of Minnesota（2012/2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(40)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000164",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 David A. Bennett、Sylvain Lesné、Mathew A. Sherman 各 3 篇共著，与 Megan Larson、Fatou Amar 各 2 篇；机构履历为 Rush University Medical Center（2012–2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(39)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000166",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Sylvain Lesné 5 篇共著，与 Mathew A. Sherman 4 篇，与 Julie A. Schneider、Megan Larson、Fatou Amar 各 3 篇；机构履历为 Rush University Medical Center（2012–2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(39)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000167",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Alain Buisson、Jürgen Götz、Chang Liu、Megan Larson、Fatou Amar、Gabriel Boyle、Sylvain Lesné、Mathew A. Sherman 各 1 篇共著；机构履历为 Inserm / Grenoble Institute of Neurosciences / Université Grenoble Alpes（2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000168",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Alain Buisson、Jürgen Götz、Travis Rush、Megan Larson、Fatou Amar、Gabriel Boyle、Sylvain Lesné、Mathew A. Sherman 各 1 篇共著；机构履历为 The University of Sydney（2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000169",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Lars M. Ittner 3 篇共著，与 Juan Carlos Polanco 2 篇，与 Yean-Teng Lim、Frédéric A. Meunier、Ramón Martínez-Mármol、Liviu-Gabriel Bodea、Chuanzhou Li、Rebecca M. Nisbet、Alain Buisson、Chang Liu 各 1 篇；机构履历含 The University of Sydney（2008/2009）与 The University of Queensland（2014/2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000170",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Sylvain Lesné 11 篇共著，与 Denis Vivien、Eric T. MacKenzie 各 10 篇，与 Fabián Docagne 8 篇、Carine Ali 7 篇；机构履历含 CNRS / Université de Caen Normandie（2000–2005）及 Inserm / Grenoble Institute of Neurosciences / Université Grenoble Alpes（2017）。记录另含 L1 风险标记（详见 risks 字段），画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "L1；状态：confirmed；依据：与事件标记论文(22)存在共同作者关系——仅风险提示，绝非定性；事件：Lesné Aβ*56 学术质疑事件",
+   "representative_paper_ids": []
+  },
+  {
+   "author_id": "BG000176",
+   "focus": "库内无论文记录，研究焦点待补充",
+   "summary": "输入记录未收录该作者论文（papers 为空），无法以 paper_id 锚定任何研究论断。记录显示其与 Linda Kotilinek、Karen H. Ashe、Sylvain Lesné、Mathew A. Sherman 各 2 篇共著，与 Carrie M. Wilmot、John H. Reichl、Samantha L. Shapiro、Peng Liu、Wei Qiang、Kathleen R. Zahs 各 1 篇；机构履历为 University of Minnesota（2007/2015）。研究内容、方法与成果缺库内证据，画像按输入不足如实降级。",
+   "key_contributions": "输入记录未收录论文，暂无可锚定 paper_id 的主要贡献",
+   "risks": "无风险标记",
+   "representative_paper_ids": []
+  }
+ ]
+}

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  可选：免费源每日增量定时任务（macOS launchd）。
+  默认不启用——本项目原则为「手动触发、无常驻进程」；如需自动，按下面步骤安装：
+
+  1. 将本文件复制为 ~/Library/LaunchAgents/com.peopar.update.plist
+  2. 修改 <string> 中的 peopar 仓库绝对路径（如 /Users/zhangxinhao/Documents/script/peopar）
+  3. 加载：launchctl load ~/Library/LaunchAgents/com.peopar.update.plist
+  4. 卸载：launchctl unload ~/Library/LaunchAgents/com.peopar.update.plist
+
+  注意：launchd 环境下 python3 路径可能需绝对路径（`which python3`）。
+  webvpn 源（Scopus/CNKI/万方）因需人工登录，不纳入定时，按 skill 工作流手动执行。
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.peopar.update</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>/Users/zhangxinhao/Documents/script/peopar/update.sh</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Hour</key>
+    <integer>6</integer>
+    <key>Minute</key>
+    <integer>30</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/peopar_update.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/peopar_update.err</string>
+  <key>RunAtLoad</key>
+  <false/>
+</dict>
+</plist>

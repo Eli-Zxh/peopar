@@ -196,7 +196,7 @@ def fetch_and_store_pmids(conn, cfg, domain_id, pmids, rule="cite_seed", matched
 
 
 def ingest(domain_id: str, limit: int | None = None, api_key: str | None = None, dry_run=False,
-           incremental=False):
+           incremental=False, full=False, from_year=1900):
     conn = connect()
     init_db(conn)
     cfg = ensure_domain(conn, domain_id)
@@ -215,6 +215,8 @@ def ingest(domain_id: str, limit: int | None = None, api_key: str | None = None,
             last = (date.today() - timedelta(days=30)).isoformat()
         term = f"({term}) AND (\"{last}\"[EDAT] : \"3000\"[EDAT])"
         print(f"[增量] EDAT 窗口：{last} → 今")
+    elif full:
+        return _ingest_full(conn, cfg, domain_id, term, api_key, dry_run, from_year)
     print(f"[query] {term}")
     if dry_run:
         print("[dry-run] 仅显示检索式，不执行采集")
@@ -256,6 +258,69 @@ def ingest(domain_id: str, limit: int | None = None, api_key: str | None = None,
           {"new": new_p, "updated": upd_p})
     conn.commit()
     print(f"[完成] {domain_id}: 新增 {new_p} 篇，更新 {upd_p} 篇")
+
+
+def _slice_edat(conn, cfg, domain_id, term, s, e, api_key, dry_run,
+                new_p=0, upd_p=0, max_per_window=9000, depth=0):
+    """按 EDAT 年份窗口分片（迭代队列，无深度上限）：片内命中 >max 则二分缩小窗口，
+    保证历史论文不被排序截断。"""
+    queue = [(s, e, 0)]
+    while queue:
+        ws, we, d = queue.pop(0)
+        if d > 10 and int(we) - int(ws) < 3:
+            print(f"[full] ⚠ 窗口 ({ws}–{we}) 命中仍超量且年份过窄，跳过（极热区间，可手动细分）")
+            continue
+        term_w = f"({term}) AND (\"{ws}\"[EDAT] : \"{we}\"[EDAT])"
+        ids, total = esearch_ids(term_w, max_per_window, "", api_key)
+        if dry_run:
+            print(f"[full][dry-run] EDAT {ws}–{we}: 命中 {total}")
+            continue
+        if total > max_per_window:
+            mid = (int(ws) + int(we)) // 2
+            print(f"[full] 窗口 ({ws}–{we}) 命中 {total} > {max_per_window}，二分 → ({ws}–{mid})/({mid + 1}–{we})")
+            queue.append((ws, mid, d + 1))
+            queue.append((mid + 1, we, d + 1))
+            continue
+        author_only = bool(cfg["pubmed"].get("author_queries"))
+        for i in range(0, len(ids), BATCH):
+            chunk = ids[i:i + BATCH]
+            params = {"db": "pubmed", "retmode": "xml", "id": ",".join(chunk)}
+            if api_key:
+                params["api_key"] = api_key
+            root = fetch_xml(f"{EUTILS}/efetch.fcgi", params)
+            for art in root.findall("PubmedArticle"):
+                rec = parse_article(art)
+                if not rec:
+                    continue
+                rule_match = local_rule_match(rec, cfg)
+                if rule_match:
+                    rule, matched = rule_match
+                elif author_only:
+                    rule, matched = "author", ";".join(cfg["pubmed"]["author_queries"])
+                else:
+                    continue
+                new_p, upd_p = _upsert_paper(conn, rec, domain_id, rule, matched, new_p, upd_p)
+            conn.commit()
+            print(f"[full][{ws}–{we}] efetch {min(i + BATCH, len(ids))}/{len(ids)}  累计新增 {new_p}")
+            time.sleep(0.4)
+    return new_p, upd_p
+
+
+def _ingest_full(conn, cfg, domain_id, term, api_key, dry_run=False, from_year=1900):
+    """全量模式：按 EDAT 年份窗口分片采集，覆盖全部历史（修复 pub_date 排序截断缺陷）。
+    from_year 可跳过已覆盖的早期窗口（增量补齐用）。"""
+    print(f"[full] 全量模式：EDAT {from_year}–今，窗口分片采集")
+    new_p, upd_p = _slice_edat(conn, cfg, domain_id, term, from_year, 3000, api_key, dry_run)
+    conn.execute("DELETE FROM cursors WHERE domain_id=? AND source='pubmed'", (domain_id,))
+    conn.execute("INSERT INTO cursors(domain_id, source, cursor_value) VALUES(?,?,?)",
+                 (domain_id, "pubmed",
+                  json.dumps({"query": term, "fetched": "full", "date": time.strftime("%Y/%m/%d")},
+                             ensure_ascii=False)))
+    audit(conn, "system", "ingest.pubmed.full_done", "domain", domain_id,
+          {"new": new_p, "updated": upd_p})
+    conn.commit()
+    print(f"[full 完成] {domain_id}: 新增 {new_p} 篇，更新 {upd_p} 篇（历史窗口已覆盖）")
+    return new_p
 
 
 def _upsert_paper(conn, rec, domain_id, rule, matched, new_p, upd_p):
@@ -319,5 +384,10 @@ if __name__ == "__main__":
     ap.add_argument("--dry-run", action="store_true", help="仅打印检索式")
     ap.add_argument("--incremental", action="store_true",
                     help="增量模式：仅检索上次运行后入库的记录（EDAT 窗口）")
+    ap.add_argument("--full", action="store_true",
+                    help="全量模式：按 EDAT 年份窗口分片覆盖全部历史（修复排序截断）")
+    ap.add_argument("--from-year", type=int, default=1900,
+                    help="全量模式的起始年份（补齐缺口时用，如 2021）")
     args = ap.parse_args()
-    ingest(args.domain, args.limit, args.api_key, args.dry_run, args.incremental)
+    ingest(args.domain, args.limit, args.api_key, args.dry_run, args.incremental, args.full,
+           args.from_year)

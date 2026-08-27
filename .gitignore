@@ -4,3 +4,12 @@ data/*.db-shm
 __pycache__/
 *.pyc
 .DS_Store
+
+# Obsidian 插件构建产物与依赖（源码在 obsidian-plugin/src，构建后经 symlink 进 vault）
+obsidian-plugin/node_modules/
+obsidian-plugin/main.js
+obsidian-plugin/styles.css
+obsidian-plugin/dist/
+
+# 合成上下文包（analyze/extract.py 可重新生成）
+data/pack_*.json

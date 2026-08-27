@@ -1,0 +1,25 @@
+{
+  "name": "peopar-obsidian",
+  "version": "0.2.0",
+  "description": "百官行述 · 研究者图谱（Obsidian 原生视图，调本地 peopar API）",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["obsidian", "research", "graph", "bibliometrics"],
+  "author": "zhangxinhao",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "builtin-modules": "^3.3.0",
+    "esbuild": "^0.21.0",
+    "obsidian": "^1.6.7",
+    "tslib": "^2.6.2",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "echarts": "^5.5.0"
+  }
+}

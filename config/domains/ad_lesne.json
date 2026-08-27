@@ -6,9 +6,7 @@
     "mesh_terms": [],
     "mesh_boundary": [],
     "keywords_strong": [
-      "Abeta*56[tiab]",
-      "A beta*56[tiab]",
-      "amyloid beta *56[tiab]"
+      "\"Abeta 56\"[tiab]"
     ],
     "keywords_boundary": [],
     "author_queries": ["Lesne S[Author]", "Lesné S[Author]"],
