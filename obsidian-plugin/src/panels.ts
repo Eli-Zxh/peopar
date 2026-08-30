@@ -5,7 +5,7 @@ import { esc, statusBadge, flagBadges, dirName } from "./views";
 const pmidLink = (p: any) => p?.pmid ? `https://pubmed.ncbi.nlm.nih.gov/${p.pmid}/` : "#";
 
 // ---------- 研究者档案 ----------
-export function renderAuthor(a: AuthorDetail, snap: AuthorSnapshotResp, user: string): string {
+export function renderAuthor(a: AuthorDetail, snap: AuthorSnapshotResp | null, user: string): string {
   const f0 = a.flags.filter(f => f.level === "L0" && f.status !== "dismissed");
   const f1 = a.flags.filter(f => f.level === "L1" && f.status !== "dismissed");
   let flags = "";

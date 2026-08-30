@@ -8,7 +8,27 @@ version: 2.0.0
 
 以研究者为中心的学术图谱：共著网络 + 方向簇 + 研究者画像 + 造假标记闭环。
 零依赖（Python 标准库 + SQLite + ECharts）。本地服务 `python3 app.py` → http://127.0.0.1:8765。
-**Obsidian 插件**（obsidian-plugin/）以原生视图调本地 API；浏览器版 web/index.html 保留。
+
+## 三层架构（2026-08 调整后）
+
+| 层 | 载体 | 说明 |
+|---|---|---|
+| L1 权威层 | SQLite + CLI | 采集（PubMed/OpenAlex/webvpn）、图谱、LLM 合成、写操作、审计 |
+| L2 投影层 | `manage/export_vault.py <vault> --topic "方向名"` | 核心数据 → vault 内 `<方向名>/peopar/` 目录 md（frontmatter + wikilink），幂等可重跑 |
+| L3 展示层 | **Obsidian 插件**（obsidian-plugin/） | 静态优先：读 `<方向名>/peopar/` 渲染（离线零进程）；`enableServer` 开启后走本地服务（实时数据+写操作）；`.peopar` 文件触发视图 |
+
+- **文件结构分层**：`<vault>/<方向名>/peopar/{directions,researchers,papers,events}/`——按研究大方向命名顶层目录（`--topic`），插件设置 `topic` 需与之一致。
+- **文件格式契约**：见 `doc/obsidian-vault-format.md`（frontmatter type 区分 direction/researcher/paper/event；正文规范：方向=方案C折叠、研究者=三层研究方向、论文=方向角色锚定句；wikilink 走 Obsidian 原生）。
+- 日常使用：纯插件读 vault 快照，**不依赖服务器、不依赖外部进程**。
+- 数据更新：skill/agent 跑 CLI → 末尾执行 `export_vault.py --topic "…"` 写 vault → **Obsidian 文件监听自动刷新视图**（无需重启）。
+- 写操作（审阅/裁决/校对/L0）：需开启插件「实时服务」（探测/拉起 python3 app.py）或用 CLI。
+- 浏览器版 web/index.html 保留（兼容）。
+
+## 新方向的仓库决策规则
+
+先统计目标方向作者与现有域作者的重叠比例：
+- **作者重叠 ≥20%**（同一批人）→ 补进原库：`python3 manage/domains.py new`（默认；BG 身份/画像/造假标记一次维护）
+- **基本零重叠 + 数据源独立**（跨学科新领域）→ 新建独立 peopar 仓库（避免库膨胀与跨域噪声）
 
 ## 不可违反的原则
 
@@ -22,8 +42,10 @@ version: 2.0.0
 ## 命令速查
 
 ```
-启动应用          python3 app.py                       # 127.0.0.1:8765（Obsidian 插件可自动拉起）
-免费源增量        ./update.sh                          # PubMed 增量 + OpenAlex + 图谱
+启动应用          python3 app.py                       # 127.0.0.1:8765（仅实时模式需要）
+免费源增量        ./update.sh                          # PubMed 增量 + OpenAlex + 图谱 + vault 投影导出
+vault 投影导出    python3 manage/export_vault.py "<vault路径>" [--domain a,b] [--researcher-min-papers 3]
+                   # 导出后 Obsidian 插件（.peopar 视图）经文件监听自动刷新
 PubMed 全量修复   python3 ingest/pubmed.py <域> --full # EDAT 年份窗口分片，覆盖全部历史
 webvpn 导入       python3 manage/webvpn.py import <文件> --source scopus|cnki|wanfang --domain <域> [--query ...]
 webvpn 批次       python3 manage/webvpn.py list [--domain <域>]

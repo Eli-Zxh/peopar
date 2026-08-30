@@ -16,9 +16,13 @@
 
 - **前端形态**：**Obsidian 原生插件**（`obsidian-plugin/`）为第一入口——方向聚合图 / 方向·研究者 / 热点时间线 /
   研究者档案 / 造假事件 / 管理台，新拟态 + 柔和粉彩 UI，深浅自适应 Obsidian 主题；浏览器版 `web/index.html` 保留（双形态）。
-- **数据与后端**：零依赖（Python 标准库 + SQLite + ECharts），本地服务 `python3 app.py` → http://127.0.0.1:8765，插件自动拉起。
+- **三层架构**：L1 权威层（SQLite + CLI：采集/图谱/合成/写操作/审计）→ L2 投影层（`manage/export_vault.py`
+  导出为 vault 内 `<方向名>/peopar/` 目录 md，frontmatter + wikilink）→ L3 展示层（插件**静态优先**读 vault 快照渲染，
+  **零服务器零外部进程**；`enableServer` 开启后走本地服务提供实时数据与写操作；`.peopar` 文件触发视图）。
+  文件格式契约见 `doc/obsidian-vault-format.md`。
+- **数据与后端**：零依赖（Python 标准库 + SQLite + ECharts），本地服务 `python3 app.py` → http://127.0.0.1:8765（可选实时层）。
 - **更新方式**：skill 式半自动——免费源（PubMed/OpenAlex）脚本一键增量；机构 webvpn（Scopus/CNKI/万方）**用户手动登录后，
-  AI 助手检索导出、脚本导入**（无常驻进程、不自动调度）。
+  AI 助手检索导出、脚本导入**（无常驻进程、不自动调度）；更新后 `export_vault.py` 写 vault，Obsidian 文件监听自动刷新插件。
 - **LLM 合成**：skill 式（AI 助手按版本化模板合成，人工在环审阅）——方向级簇快照、作者级画像、域级概览；
   产物一律锚定校验后以待审入库；无 API key、无本地模型依赖。
 - **可视化侧重**：以**研究方向为第一视角**（方向聚合图 + 下钻作者层）、**方向→研究者**（谁在做这个方向）、
@@ -38,9 +42,10 @@
 ## 快速开始
 
 ```bash
-python3 app.py          # 启动本地服务 → http://127.0.0.1:8765（Obsidian 插件会自动拉起）
-./update.sh             # 免费源增量更新（PubMed + OpenAlex + 图谱）
+./update.sh             # 免费源增量更新（PubMed + OpenAlex + 图谱 + vault 投影导出）
+python3 manage/export_vault.py "~/Documents/Obisidian Valut" --topic "神经语言学与失语症"   # 单独导出 vault 投影
 ./update_webvpn.sh neuroling data/webvpn/scopus_x.csv --source scopus --query "TITLE-ABS-KEY(...)"   # webvpn 导入
+python3 app.py          # 可选：实时服务（插件 enableServer 时自动拉起，提供写操作/实时数据）
 ```
 
 **Obsidian 插件**：`obsidian-plugin/` 构建后 symlink 进 `vault/.obsidian/plugins/peopar`（已在执行中完成）；

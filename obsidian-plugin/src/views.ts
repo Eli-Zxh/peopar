@@ -1,11 +1,12 @@
-import { ItemView, Notice } from "obsidian";
+import { ItemView, FileView, Notice, TFile } from "obsidian";
 import * as echarts from "echarts";
-import { VIEW_TYPE } from "./main";
+import { VIEW_TYPE, FILE_VIEW_TYPE } from "./main";
 import type PeoparPlugin from "./main";
 import {
-  api, Domain, DirectionsResp, TrendsResp, Direction, AuthorDetail, AuthorSnapshotResp,
-  Researcher, DirectionResp, Inst,
+  DataProvider, Domain, DirectionsResp, TrendsResp, Direction, AuthorDetail,
+  AuthorSnapshotResp, Researcher, DirectionResp, Inst,
 } from "./api";
+import { LiveProvider } from "./live";
 import { renderAuthor, renderEvents, renderEventDetail, renderAdmin } from "./panels";
 
 export const PALETTE = ["#8B7CF6", "#5FA8D3", "#7BC8B4", "#F0A08C", "#E98AA8", "#A6C06A",
@@ -31,32 +32,36 @@ export function dirName(d: { name?: string | null; label?: number }): string {
   return d?.name ? esc(d.name) : `方向 #${d?.label ?? "?"}`;
 }
 
-export class AtlasView extends ItemView {
+/** 视图核心：渲染逻辑与数据来源（provider）解耦；AtlasView 与 PeoparFileView 共用。 */
+export class AtlasApp {
   plugin: PeoparPlugin;
+  el: HTMLElement;
+  provider: DataProvider;
+  user: string = "user";
   domain: string = "";
   dirs: DirectionsResp | null = null;
   trends: TrendsResp | null = null;
-  user: string = "user";
   charts: echarts.ECharts[] = [];
   drillCid: number | null = null;
+  private offData: (() => void) | null = null;
 
-  constructor(leaf: any, plugin: PeoparPlugin) {
-    super(leaf);
+  constructor(plugin: PeoparPlugin, el: HTMLElement) {
     this.plugin = plugin;
+    this.el = el;
+    this.provider = plugin.provider;
   }
-  getViewType(): string { return VIEW_TYPE; }
-  getDisplayText(): string { return "百官行述 · 研究者图谱"; }
-  getIcon(): string { return "network"; }
 
-  async onOpen() {
-    const c = this.contentEl;
+  get live(): LiveProvider | null { return this.provider instanceof LiveProvider ? this.provider : null; }
+
+  async mount(defaultDomain?: string) {
+    const c = this.el;
     c.empty();
     c.addClass("pp-root");
     c.innerHTML = `
     <div class="pp-header">
       <div class="pp-title">百官行述 <span class="pp-sub">Researcher Atlas</span></div>
       <select class="pp-domain"></select>
-      <div class="pp-searchwrap"><input class="pp-q" placeholder="检索：姓名 / 汉字别名 / 论文…">
+      <div class="pp-searchwrap"><input class="pp-q" placeholder="检索：姓名 / 论文…">
         <div class="pp-qres" style="display:none"></div></div>
       <nav class="pp-nav">
         <button data-tab="graph" class="on">方向图谱</button>
@@ -66,6 +71,7 @@ export class AtlasView extends ItemView {
         <button data-tab="events">造假事件</button>
         <button data-tab="admin">管理台</button>
       </nav>
+      <span class="pp-sync" title="数据来源与同步时间"></span>
     </div>
     <main class="pp-main">
       <section data-sec="graph">
@@ -89,15 +95,33 @@ export class AtlasView extends ItemView {
       this.loadGraph();
     });
     this.setupSearch();
-    await this.loadDomains();
+    this.offData = this.plugin.onDataChange(() => { if (this.domain) this.loadGraph(); });
+    this.renderSync();
+    await this.loadDomains(defaultDomain);
   }
 
-  async onClose() { this.charts.forEach(ch => ch.dispose()); this.charts = []; }
+  dispose() {
+    this.charts.forEach(ch => ch.dispose());
+    this.charts = [];
+    if (this.offData) this.offData();
+  }
+
+  renderSync() {
+    const el = this.el.querySelector(".pp-sync") as HTMLElement;
+    if (this.provider.serverConnected()) {
+      el.textContent = "● 实时（本地服务）";
+      el.classList.add("pp-sync-live");
+    } else {
+      const t = this.provider.lastSync();
+      el.textContent = "○ vault 快照" + (t ? ` · ${t.slice(5, 16)}` : "");
+      el.classList.remove("pp-sync-live");
+    }
+  }
 
   showTab(tab: string) {
-    this.contentEl.querySelectorAll(".pp-nav button").forEach(b =>
+    this.el.querySelectorAll(".pp-nav button").forEach(b =>
       b.classList.toggle("on", (b as HTMLElement).dataset.tab === tab));
-    this.contentEl.querySelectorAll("main section[data-sec]").forEach(s =>
+    this.el.querySelectorAll("main section[data-sec]").forEach(s =>
       (s as HTMLElement).style.display = (s as HTMLElement).dataset.sec === tab ? "" : "none");
     if (tab === "researchers") this.loadResearchers();
     if (tab === "trends") this.loadTrends();
@@ -107,30 +131,31 @@ export class AtlasView extends ItemView {
   }
 
   // ---------- 域与方向聚合图 ----------
-  async loadDomains() {
-    const ds = await api<Domain[]>("/api/domains");
-    const sel = this.contentEl.querySelector(".pp-domain") as HTMLSelectElement;
+  async loadDomains(defaultDomain?: string) {
+    const ds = await this.provider.domains();
+    const sel = this.el.querySelector(".pp-domain") as HTMLSelectElement;
     sel.innerHTML = ds.map(d => `<option value="${esc(d.id)}">${esc(d.name)}（${d.papers} 篇 / ${d.authors} 人）</option>`).join("");
-    this.domain = ds.find(d => d.graph_ready)?.id || ds[0]?.id || "";
+    const want = defaultDomain ? ds.find(d => d.id === defaultDomain) : undefined;
+    this.domain = want?.id || ds.find(d => d.graph_ready)?.id || ds[0]?.id || "";
     if (this.domain) this.loadGraph();
   }
 
   async loadGraph() {
-    this.dirs = await api<DirectionsResp>("/api/directions?domain=" + this.domain);
+    this.dirs = await this.provider.directions(this.domain);
     const ds = this.dirs.directions;
-    const q = this.contentEl.querySelector(".pp-stats")!;
+    const q = this.el.querySelector(".pp-stats")!;
     q.innerHTML = `
       <span class="pp-stat"><b>${ds.length}</b> 主要方向</span>
       <span class="pp-stat"><b>${ds.filter(d => d.name).length}</b> 已命名</span>
-      <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.size, 0)}</b> 研究者（top40 方向）</span>
+      <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.size, 0)}</b> 研究者</span>
       <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.recent, 0)}</b> 近三年论文</span>
-      <span class="pp-hint">节点=研究方向 · 大小=规模 · 颜色=方向 · 点击下钻作者层</span>`;
+      <span class="pp-hint">节点=研究方向 · 大小=规模 · 点击下钻</span>`;
     this.renderDirList(ds);
     this.drawDirGraph();
   }
 
   renderDirList(ds: Direction[]) {
-    const box = this.contentEl.querySelector("#pp-dirlist")!;
+    const box = this.el.querySelector("#pp-dirlist")!;
     const named = ds.filter(d => d.name);
     const unnamed = ds.filter(d => !d.name);
     const item = (d: Direction) => `
@@ -140,7 +165,6 @@ export class AtlasView extends ItemView {
         ${d.name ? (d.snap_review === "approved" ? '<span class="pp-badge pp-b-approved">已审</span>'
           : d.snap_review === "rejected" ? '<span class="pp-badge pp-b-rejected">驳回</span>'
           : '<span class="pp-badge pp-b-pending">待审</span>') : ""}
-        ${d.display === "excluded" ? '<span class="pp-badge pp-b-dismissed">已排除</span>' : ""}
         <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${d.top_authors.slice(0, 3).map(t => esc(t.name)).join(" · ")}</span>
       </div>`;
     box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击下钻）</span></div>` +
@@ -155,7 +179,7 @@ export class AtlasView extends ItemView {
   }
 
   drawDirGraph() {
-    const el = this.contentEl.querySelector("#pp-dirchart") as HTMLElement;
+    const el = this.el.querySelector("#pp-dirchart") as HTMLElement;
     const chart = echarts.init(el);
     this.charts.push(chart);
     const ds = this.dirs!.directions;
@@ -163,7 +187,7 @@ export class AtlasView extends ItemView {
       id: d.cluster_id, name: d.name || `方向#${d.label}`,
       value: d.size,
       symbolSize: 10 + Math.min(50, Math.sqrt(d.size) * 3.2),
-      itemStyle: { color: d.display === "excluded" ? "#b9b3cc" : PALETTE[d.label % PALETTE.length],
+      itemStyle: { color: PALETTE[d.label % PALETTE.length],
         shadowBlur: 14, shadowColor: "rgba(139,124,246,.35)" },
       label: { show: d.size >= 40, fontSize: 11 },
       _d: d,
@@ -176,7 +200,7 @@ export class AtlasView extends ItemView {
       tooltip: { formatter: (p: any) => {
         if (p.dataType === "node") {
           const d = p.data._d as Direction;
-          return `<b>${esc(p.data.name)}</b><br>规模 ${d.size} 人 · 论文 ${d.papers} · 近三年 ${d.recent}<br>被引 ${d.citations}<br><span style="color:#8b83a0">${d.top_authors.slice(0,3).map(t=>esc(t.name)).join(" · ")}<br>点击下钻作者层</span>`;
+          return `<b>${esc(p.data.name)}</b><br>规模 ${d.size} 人 · 论文 ${d.papers} · 近三年 ${d.recent}<br>被引 ${d.citations}<br><span style="color:#8b83a0">${d.top_authors.slice(0, 3).map(t => esc(t.name)).join(" · ")}<br>点击查看该方向研究者</span>`;
         }
         return `共享论文 ${p.data.value} 篇`;
       } },
@@ -199,10 +223,15 @@ export class AtlasView extends ItemView {
     chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: idx });
   }
 
-  /** 下钻：方向作者子图（作者为节点，共著为边）。 */
+  /** 下钻：LiveProvider → 作者共著子图；VaultProvider → 该方向研究者视图（静态无共著边）。 */
   async drillDown(cid: number, label: number) {
+    if (!this.provider.serverConnected()) {
+      this.showTab("researchers");
+      await this.renderResearchers(cid);
+      return;
+    }
     this.drillCid = cid;
-    const box = this.contentEl.querySelector("#pp-drill") as HTMLElement;
+    const box = this.el.querySelector("#pp-drill") as HTMLElement;
     box.style.display = "";
     box.innerHTML = `<div class="pp-card-title">下钻：${esc(dirName({ label }))} 的作者共著层
       <button class="pp-btn pp-btn-ghost" id="pp-back">← 返回方向视图</button></div>
@@ -211,7 +240,7 @@ export class AtlasView extends ItemView {
       box.style.display = "none";
       this.drillCid = null;
     });
-    const g = await api<any>("/api/graph?domain=" + this.domain);
+    const g = await this.live!.get("/api/graph?domain=" + this.domain);
     const nodes = g.nodes.filter((n: any) => n.cluster === label).map((n: any) => ({
       id: n.id, name: (n.zh ? n.zh + " " : "") + n.name, value: n.papers,
       symbolSize: 6 + Math.min(30, Math.sqrt(n.papers) * 2),
@@ -246,12 +275,12 @@ export class AtlasView extends ItemView {
 
   // ---------- 方向·研究者 ----------
   async loadResearchers() {
-    const sec = this.contentEl.querySelector('section[data-sec="researchers"]') as HTMLElement;
+    const sec = this.el.querySelector('section[data-sec="researchers"]') as HTMLElement;
     if (!this.dirs) { sec.innerHTML = '<div class="pp-card pp-muted">请先在「方向图谱」加载</div>'; return; }
     const named = this.dirs.directions.filter(d => d.display !== "excluded");
     const sel = named.map(d => `<option value="${d.cluster_id}">${dirName(d)}（${d.size} 人）</option>`).join("");
     sec.innerHTML = `<div class="pp-card pp-researchers-head">
-        <div class="pp-card-title">方向 → 研究者<span class="pp-meta">每个方向列出该方向的核心研究者（谁在做这个方向）</span></div>
+        <div class="pp-card-title">方向 → 研究者<span class="pp-meta">每个方向列出该方向的核心研究者</span></div>
         <select class="pp-dirsel">${sel}</select></div>
       <div class="pp-res-grid" id="pp-resgrid"></div>`;
     (sec.querySelector(".pp-dirsel") as HTMLSelectElement).addEventListener("change", e =>
@@ -260,10 +289,10 @@ export class AtlasView extends ItemView {
   }
 
   async renderResearchers(cid: number) {
-    const grid = this.contentEl.querySelector("#pp-resgrid") as HTMLElement;
+    const grid = this.el.querySelector("#pp-resgrid") as HTMLElement;
     if (!cid) { grid.innerHTML = ""; return; }
     grid.innerHTML = '<div class="pp-muted">加载中…</div>';
-    const d = await api<DirectionResp>(`/api/direction/${cid}/researchers`);
+    const d = await this.provider.directionResearchers(cid);
     const card = (r: Researcher) => `
       <div class="pp-card pp-r-card" data-aid="${esc(r.id)}">
         <div class="pp-r-name">${esc(r.name)} ${r.zh ? `<span class="pp-meta">（${esc(r.zh)}）</span>` : ""}
@@ -289,8 +318,8 @@ export class AtlasView extends ItemView {
 
   // ---------- 热点时间线 ----------
   async loadTrends() {
-    const sec = this.contentEl.querySelector('section[data-sec="trends"]') as HTMLElement;
-    this.trends = await api<TrendsResp>("/api/trends?domain=" + this.domain);
+    const sec = this.el.querySelector('section[data-sec="trends"]') as HTMLElement;
+    this.trends = await this.provider.trends(this.domain);
     const top = this.trends.series.filter(s => s.display !== "excluded").slice(0, 10);
     sec.innerHTML = `<div class="pp-card">
         <div class="pp-card-title">方向 × 年份 论文热度<span class="pp-meta">（主要方向，堆叠面积）</span></div>
@@ -324,62 +353,63 @@ export class AtlasView extends ItemView {
   // ---------- 研究者档案 ----------
   async openAuthor(id: string) {
     this.showTab("author");
-    const sec = this.contentEl.querySelector('section[data-sec="author"]') as HTMLElement;
+    const sec = this.el.querySelector('section[data-sec="author"]') as HTMLElement;
     sec.innerHTML = '<div class="pp-muted">加载中…</div>';
     const [a, snap] = await Promise.all([
-      api<AuthorDetail>("/api/author/" + id),
-      api<AuthorSnapshotResp>("/api/author/" + id + "/snapshot").catch(() => ({})),
+      this.provider.author(id),
+      this.provider.authorSnapshot(id),
     ]);
     sec.innerHTML = renderAuthor(a, snap, this.user);
     sec.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
       const act = (b as HTMLElement).dataset.act!;
       const val = (sec.querySelector("#pp-hanzi") as HTMLInputElement)?.value ?? "";
-      if (act === "hanzi" && val) {
-        await api(`/api/author/${id}/hanzi`, { method: "POST", body: JSON.stringify({ hanzi: val, by: this.user }) });
+      if (act === "hanzi" && val && this.live) {
+        await this.live.post(`/api/author/${id}/hanzi`, { hanzi: val, by: this.user });
         this.openAuthor(id);
-      } else if (act === "review-snap") {
-        await api(`/api/author-snapshot/${(b as HTMLElement).dataset.sid}/review`,
-          { method: "POST", body: JSON.stringify({ action: (b as HTMLElement).dataset.v, by: this.user }) });
+      } else if (act === "review-snap" && this.live) {
+        await this.live.post(`/api/author-snapshot/${(b as HTMLElement).dataset.sid}/review`,
+          { action: (b as HTMLElement).dataset.v, by: this.user });
         this.openAuthor(id);
       } else if (act === "open") {
         this.openAuthor((b as HTMLElement).dataset.aid!);
-      } else if (act === "confirm-l0") {
+      } else if (act === "confirm-l0" && this.live) {
         const basis = (sec.querySelector(`#pp-basis-${(b as HTMLElement).dataset.fid}`) as HTMLInputElement)?.value ?? "";
         if (confirm("L0 为确认造假定性，须有明确证据。确认执行？")) {
-          await api(`/api/flag/${(b as HTMLElement).dataset.fid}/confirm-l0`,
-            { method: "POST", body: JSON.stringify({ by: this.user, basis }) });
+          await this.live.post(`/api/flag/${(b as HTMLElement).dataset.fid}/confirm-l0`, { by: this.user, basis });
           this.openAuthor(id);
         }
-      } else if (act === "dismiss") {
-        await api(`/api/flag/${(b as HTMLElement).dataset.fid}/dismiss`,
-          { method: "POST", body: JSON.stringify({ by: this.user }) });
+      } else if (act === "dismiss" && this.live) {
+        await this.live.post(`/api/flag/${(b as HTMLElement).dataset.fid}/dismiss`, { by: this.user });
         this.openAuthor(id);
+      } else if (!this.live) {
+        new Notice("写操作需启用「实时服务」（设置中开启）");
       }
     }));
   }
 
   // ---------- 事件与管理台 ----------
   async loadEvents() {
-    const sec = this.contentEl.querySelector('section[data-sec="events"]') as HTMLElement;
+    const sec = this.el.querySelector('section[data-sec="events"]') as HTMLElement;
     sec.innerHTML = await renderEvents(this.user);
     sec.querySelectorAll("[data-open-event]").forEach(b => b.addEventListener("click", () =>
       this.openEvent(+(b as HTMLElement).dataset.openEvent!)));
     sec.querySelectorAll("[data-confirm-event]").forEach(b => b.addEventListener("click", async () => {
-      await api(`/api/event/${(b as HTMLElement).dataset.confirmEvent}/confirm`,
-        { method: "POST", body: JSON.stringify({ by: this.user }) });
+      if (!this.live) { new Notice("需启用实时服务"); return; }
+      await this.live.post(`/api/event/${(b as HTMLElement).dataset.confirmEvent}/confirm`, { by: this.user });
       this.loadEvents();
     }));
     sec.querySelectorAll("[data-confirm-l0e]").forEach(b => b.addEventListener("click", async () => {
+      if (!this.live) { new Notice("需启用实时服务"); return; }
       const fid = +(b as HTMLElement).dataset.confirmL0e!;
       const basis = (sec.querySelector(`#pp-basis-${fid}`) as HTMLInputElement)?.value ?? "";
       if (confirm("确认执行 L0 定性？")) {
-        await api(`/api/flag/${fid}/confirm-l0`, { method: "POST", body: JSON.stringify({ by: this.user, basis }) });
+        await this.live.post(`/api/flag/${fid}/confirm-l0`, { by: this.user, basis });
         this.loadEvents();
       }
     }));
     sec.querySelectorAll("[data-dismiss-flag]").forEach(b => b.addEventListener("click", async () => {
-      await api(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`,
-        { method: "POST", body: JSON.stringify({ by: this.user }) });
+      if (!this.live) { new Notice("需启用实时服务"); return; }
+      await this.live.post(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`, { by: this.user });
       this.loadEvents();
     }));
     sec.querySelectorAll("[data-open-author]").forEach(b => b.addEventListener("click", () =>
@@ -387,47 +417,53 @@ export class AtlasView extends ItemView {
   }
 
   async openEvent(id: number) {
-    const sec = this.contentEl.querySelector('section[data-sec="events"]') as HTMLElement;
+    const sec = this.el.querySelector('section[data-sec="events"]') as HTMLElement;
     sec.innerHTML = await renderEventDetail(id, this.user);
     sec.querySelectorAll("[data-open-author]").forEach(b => b.addEventListener("click", () =>
       this.openAuthor((b as HTMLElement).dataset.openAuthor!)));
     sec.querySelectorAll("[data-confirm-l0e]").forEach(b => b.addEventListener("click", async () => {
+      if (!this.live) { new Notice("需启用实时服务"); return; }
       const fid = +(b as HTMLElement).dataset.confirmL0e!;
       const basis = (sec.querySelector(`#pp-basis-${fid}`) as HTMLInputElement)?.value ?? "";
       if (confirm("确认执行 L0 定性？")) {
-        await api(`/api/flag/${fid}/confirm-l0`, { method: "POST", body: JSON.stringify({ by: this.user, basis }) });
+        await this.live.post(`/api/flag/${fid}/confirm-l0`, { by: this.user, basis });
         this.openEvent(id);
       }
     }));
     sec.querySelectorAll("[data-dismiss-flag]").forEach(b => b.addEventListener("click", async () => {
-      await api(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`,
-        { method: "POST", body: JSON.stringify({ by: this.user }) });
+      if (!this.live) { new Notice("需启用实时服务"); return; }
+      await this.live.post(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`, { by: this.user });
       this.openEvent(id);
     }));
   }
 
   async loadAdmin() {
-    const sec = this.contentEl.querySelector('section[data-sec="admin"]') as HTMLElement;
+    const sec = this.el.querySelector('section[data-sec="admin"]') as HTMLElement;
+    if (!this.live) {
+      sec.innerHTML = `<div class="pp-card"><div class="pp-card-title">管理台</div>
+        <div class="pp-meta">当前为 vault 快照模式（只读）。管理操作（快照审阅 / LLM 建议裁决 / 别名校对 / 机构校验 / webvpn 导入）需要：
+        <br>① 在插件设置中开启「实时服务」（将拉起 python3 app.py 并读取 SQLite 权威数据）；或
+        <br>② 由 skill/agent 用 CLI 执行：<code>manage/snapshot.py review</code>、<code>manage/judgment.py decide</code>、
+        <code>manage/affiliations.py verify</code> 等。
+        <br><br>数据更新：运行 <code>python3 manage/export_vault.py "vault路径"</code> 后本视图自动刷新（Obsidian 文件监听）。</div></div>`;
+      return;
+    }
     sec.innerHTML = await renderAdmin(this.user, this.domain);
     sec.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
       const el = b as HTMLElement;
       const act = el.dataset.act!;
       if (act === "review") {
         const sid = el.dataset.sid!, kind = el.dataset.kind!, v = el.dataset.v!;
-        await api(`/api/${kind === "author" ? "author-snapshot" : "snapshot"}/${sid}/review`,
-          { method: "POST", body: JSON.stringify({ action: v, by: this.user }) });
+        await this.live!.post(`/api/${kind === "author" ? "author-snapshot" : "snapshot"}/${sid}/review`, { action: v, by: this.user });
         this.loadAdmin();
       } else if (act === "judge") {
-        await api(`/api/judgment/${el.dataset.jid}/decide`,
-          { method: "POST", body: JSON.stringify({ action: el.dataset.v, by: this.user, note: el.dataset.note }) });
+        await this.live!.post(`/api/judgment/${el.dataset.jid}/decide`, { action: el.dataset.v, by: this.user, note: el.dataset.note });
         this.loadAdmin();
       } else if (act === "alias") {
-        await api(`/api/alias/${el.dataset.aid2}/verify`,
-          { method: "POST", body: JSON.stringify({ verified: el.dataset.v === "1", by: this.user }) });
+        await this.live!.post(`/api/alias/${el.dataset.aid2}/verify`, { verified: el.dataset.v === "1", by: this.user });
         this.loadAdmin();
       } else if (act === "aff") {
-        await api(`/api/affiliation/${el.dataset.affid}/verify`,
-          { method: "POST", body: JSON.stringify({ by: this.user }) }).catch(() => {});
+        await this.live!.post(`/api/affiliation/${el.dataset.affid}/verify`, { by: this.user });
         this.loadAdmin();
       } else if (act === "open") {
         this.openAuthor(el.dataset.aid!);
@@ -437,15 +473,15 @@ export class AtlasView extends ItemView {
 
   // ---------- 检索 ----------
   setupSearch() {
-    const input = this.contentEl.querySelector(".pp-q") as HTMLInputElement;
-    const res = this.contentEl.querySelector(".pp-qres") as HTMLElement;
+    const input = this.el.querySelector(".pp-q") as HTMLInputElement;
+    const res = this.el.querySelector(".pp-qres") as HTMLElement;
     let t: number | null = null;
     input.addEventListener("input", () => {
       if (t) clearTimeout(t);
       t = window.setTimeout(async () => {
         const v = input.value.trim();
         if (!v) { res.style.display = "none"; return; }
-        const r = await api<any>("/api/search?q=" + encodeURIComponent(v));
+        const r = await this.provider.search(v);
         res.innerHTML = r.authors.map((a: any) =>
           `<div data-open="${esc(a.id)}">👤 ${esc(a.name_display)}${a.name_zh ? "（" + esc(a.name_zh) + "）" : ""}
            <span class="pp-meta">${a.papers} 篇${a.l0 ? " ⛔L0" : ""}${a.l1 ? " ⚠L1" : ""}</span></div>`).join("") +
@@ -467,5 +503,50 @@ export class AtlasView extends ItemView {
     document.addEventListener("click", e => {
       if (!(e.target as HTMLElement).closest(".pp-searchwrap")) res.style.display = "none";
     });
+  }
+}
+
+/** 常规视图（ribbon/命令打开，默认域） */
+export class AtlasView extends ItemView {
+  plugin: PeoparPlugin;
+  private core: AtlasApp | null = null;
+  constructor(leaf: any, plugin: PeoparPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType(): string { return VIEW_TYPE; }
+  getDisplayText(): string { return "百官行述 · 研究者图谱"; }
+  getIcon(): string { return "network"; }
+  async onOpen() {
+    this.core = new AtlasApp(this.plugin, this.contentEl);
+    await this.core.mount();
+  }
+  async onClose() { this.core?.dispose(); this.core = null; }
+}
+
+/** 文件视图：双击 .peopar 文件打开（frontmatter.domain 指定域） */
+export class PeoparFileView extends FileView {
+  plugin: PeoparPlugin;
+  private core: AtlasApp | null = null;
+  constructor(leaf: any, plugin: PeoparPlugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType(): string { return FILE_VIEW_TYPE; }
+  getDisplayText(): string { return this.file ? this.file.basename : "百官行述"; }
+  getIcon(): string { return "network"; }
+
+  async onOpen() { await this.render(); }
+  async onLoadFile(file: TFile) { await this.render(); }
+  async onUnloadFile(file: TFile) { this.core?.dispose(); this.core = null; this.contentEl.empty(); }
+
+  private async render() {
+    if (!this.file) return;
+    const fm = this.app.metadataCache.getFileCache(this.file)?.frontmatter;
+    const domain = fm?.domain ?? "neuroling";
+    this.contentEl.empty();
+    this.core?.dispose();
+    this.core = new AtlasApp(this.plugin, this.contentEl);
+    await this.core.mount(domain);
   }
 }

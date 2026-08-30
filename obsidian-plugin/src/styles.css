@@ -62,6 +62,9 @@
   font-size:13px;cursor:pointer;font-family:inherit}
 .pp-nav button:hover{color:var(--p-ink)}
 .pp-nav button.on{color:var(--p-ink);font-weight:600;background:var(--p-line)}
+.pp-sync{font-size:11px;color:var(--p-sub);margin-left:auto;white-space:nowrap;
+  background:var(--p-line);border-radius:10px;padding:3px 10px}
+.pp-sync-live{color:var(--p-ok);background:rgba(95,181,143,.14)}
 
 /* ---------- 主体 ---------- */
 .pp-main{max-width:1500px;margin:0 auto}

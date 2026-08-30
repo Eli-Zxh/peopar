@@ -63,3 +63,21 @@ export interface Judgment { id: number; jtype: string; entity_type: string; enti
 export interface WebvpnImport { id: number; domain_id: string; source: string; file_name?: string; query?: string; n_records: number; n_new: number; n_dup: number; imported_at: string; }
 
 export interface SnapshotQueueItem { id: number; kind?: string; domain_id?: string; cluster_id?: number; author_id?: string; author_name?: string; content: any; model?: string; review_status: string; n_evidence: number; generated_at: string; }
+
+/** 数据提供者：LiveProvider（本地服务 API）与 VaultProvider（vault md 快照）实现同一接口，
+ *  视图层不感知数据来源。静态（vault md）模式零服务器可用。 */
+export interface DataProvider {
+  serverConnected(): boolean;
+  lastSync(): string | null;              // _sync.md 时间戳（静态模式）
+  domains(): Promise<Domain[]>;
+  directions(domain: string): Promise<DirectionsResp>;
+  trends(domain: string): Promise<TrendsResp>;
+  directionResearchers(cid: number): Promise<DirectionResp>;
+  author(id: string): Promise<AuthorDetail>;
+  authorSnapshot(id: string): Promise<AuthorSnapshotResp | null>;
+  events(): Promise<FraudEvent[]>;
+  eventDetail(id: number): Promise<FraudEventDetail>;
+  search(q: string): Promise<any>;
+  /** 仅 LiveProvider 支持（写操作/管理台）；静态模式返回 false */
+  writeSupported(): boolean;
+}

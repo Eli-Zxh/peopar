@@ -1,8 +1,9 @@
 #!/bin/zsh
-# webvpn 半自动导入：导入用户在机构 webvpn 门户导出的题录文件 → 图谱刷新 → 失效感知
+# webvpn 半自动导入：导入用户在机构 webvpn 门户导出的题录文件 → 图谱刷新 → 失效感知 → vault 投影导出
 # 用法：
 #   ./update_webvpn.sh <域id> <题录文件> --source scopus|cnki|wanfang [--query "检索式"]
 # 前置：用户已在 webvpn 门户登录并导出文件（见 prompts/webvpn_collect.md）
+VAULT="${PEOPAR_VAULT:-$HOME/Documents/Obisidian Valut}"
 cd "$(dirname "$0")"
 if [ $# -lt 3 ]; then
   echo "用法: $0 <域id> <文件> --source scopus|cnki|wanfang [--query \"检索式\"]"
@@ -15,4 +16,6 @@ echo "=== 图谱刷新 ==="
 python3 analyze/graph.py "$DOMAIN" || exit 1
 echo "=== 失效感知 ==="
 python3 manage/snapshot.py staleness "$DOMAIN"
+echo "=== 导出 vault 投影 ==="
+python3 manage/export_vault.py "$VAULT" --topic "${PEOPAR_TOPIC:-神经语言学与失语症}" --domain "$DOMAIN" --researcher-min-papers 3
 echo "webvpn 更新完成：$(date)"
