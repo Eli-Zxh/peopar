@@ -18,3 +18,7 @@ data/pack_*.json
 data/layout_aff_*.json
 data/layout_map_*.json
 data/layout_*_preview.json
+
+# 批量合成中间产物
+data/dir_snap_*.json
+data/author_snap_*.json
