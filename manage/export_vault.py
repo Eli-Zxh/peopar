@@ -52,8 +52,43 @@ def fm(d: dict) -> str:
     return "\n".join(lines)
 
 
+MANUAL_FM_RE = re.compile(r"^---\n(.*?)\n---", re.S)
+MANUAL_DETAILS = re.compile(r"<details[^>]*class=\"pp-note\"[^>]*>.*?</details>", re.S)
+
+
+def extract_manual(old_text: str) -> tuple[list, str]:
+    """抽取人工修订：frontmatter 的 manual_* 键行 + 正文「📝 人工批注」details 区块（导出不覆盖）。"""
+    fm_lines = []
+    m = MANUAL_FM_RE.match(old_text)
+    if m:
+        fm_lines = [ln for ln in m.group(1).splitlines() if ln.strip().startswith("manual_")]
+    body = ""
+    mm = MANUAL_DETAILS.search(old_text)
+    if mm:
+        inner = re.sub(r"<details[^>]*>|<summary>.*?</summary>|</details>", "", mm.group(0), flags=re.S)
+        body = inner.strip()
+    return fm_lines, body
+
+
+def manual_block(note: str) -> str:
+    return f"\n<details class=\"pp-note\"><summary>📝 人工批注（本区导出不覆盖）</summary>\n\n{note}\n\n</details>\n"
+
+
+def write_md(out: Path, name: str, front: dict, body: str):
+    """写 md，保留既有文件中的 manual_* frontmatter 与人工批注 details 区块。"""
+    fm_lines, manual_body = [], ""
+    if (out / name).exists():
+        fm_lines, manual_body = extract_manual((out / name).read_text(encoding="utf-8"))
+    text = fm(front) + "\n\n" + body
+    if manual_body:
+        text += manual_block(manual_body)
+    if fm_lines:
+        text = re.sub(r"^(---\n)", r"\1" + "\n".join(fm_lines) + "\n", text, count=1)
+    (out / name).write_text(text, encoding="utf-8")
+
+
 def md_file(out: Path, name: str, front: dict, body: str):
-    (out / name).write_text(fm(front) + "\n\n" + body, encoding="utf-8")
+    write_md(out, name, front, body)
 
 
 # ---------- 方向角色提取：从快照/画像文本中找出锚定某 paper_id 的句子 ----------

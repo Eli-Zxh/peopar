@@ -61,6 +61,18 @@ LLM 提案裁决      python3 manage/judgment.py propose <json> | list [--status
 机构官网信息      python3 manage/affiliations.py add <BG…> --institution "机构" [--role 职位] [--url ...] [--email ...] --by 署名
                   python3 manage/affiliations.py verify|dismiss <id> --by 署名 | queue | list <BG…>
 造假事件          python3 manage/events.py apply <json> | list | confirm-l0 | confirm-event
+布局评分入库      python3 manage/layout_scores.py apply <json> | list [--pending] | review <id> approve|reject --by 署名
+图谱布局求解      python3 analyze/layout.py <域> [--k 12] [--include-pending] [--seed 42]
+人工修订同步      python3 manage/notes_sync.py scan|apply <vault> [--topic 方向名] [--by 署名] [--sync]
+标签管理          python3 manage/tags.py seed <json> | list-vocab [--dim X] | propose-vocab <json> --by 署名
+                  python3 manage/tags.py review-vocab <id> approve|reject --by 署名
+                  python3 manage/tags.py suggest <json> | list-tags <BG…>
+
+**V3 布局评分任务（模型见 `doc/visualization-model.md`）**：
+- `direction_map`：方向两两关联度 s(i,i′)(模板 `prompts/direction_map.md`，K(K−1)/2 对)
+- `direction_affinity`：每方向 top 论文 × 方向关联度 a(j,i)（模板 `prompts/direction_affinity.md`）
+- 评分 → `layout_scores.py apply`（待审）→ 人工 `review` 批准 → `layout.py` 求解坐标
+  → export_vault 导出 `_layout/<domain>.json` → 插件信息化方向图谱（区域+论文/作者散点+连线）
 ```
 
 ## 工作流 1：新增研究领域（AI 核心参与点）
@@ -113,6 +125,23 @@ LLM 提案裁决      python3 manage/judgment.py propose <json> | list [--status
 
 - 插件管理台集中：方向/作者快照审阅、LLM 建议裁决（采纳噪声簇 → 侧栏折叠）、别名校对、机构信息校验、webvpn 批次、审计日志。
 - CLI 等价：`snapshot.py review` / `judgment.py decide` / `affiliations.py verify`。
+
+## 工作流 8：研究者深描（平级独立 skill，手动触发）
+
+为**单个重要研究者**做全面画像 + 标签补全（用户点名触发；不做批量）。模板 `prompts/researcher_deepdive.md`。
+1. agent 采集机构公开信息（官网/课题组/ORCID，从简）→ 结合本地论文/方向记录
+2. 产出 career/profile/tag_suggestions/note/sources（全部锚定 URL 或论文）
+3. `manage/tags.py propose-vocab`（词表外新词）→ `suggest`（研究者标签建议 pending）
+4. `manage/affiliations.py add`（机构履历，待校验）→ 用户在管理台批准
+5. 画像/批注经 `notes_sync` 或研究者 vault 笔记批注区保留
+
+## 工作流 9：人工编辑同步（vault → SQLite）
+
+- 人工修订区：frontmatter `manual_*` 键 + 正文 `<!-- PP-MANUAL-START -->…<!-- PP-MANUAL-END -->`
+  ——export_vault **永不覆盖**；文档结构见 `doc/obsidian-vault-format.md`
+- `notes_sync.py scan`（只读列出）→ `apply --by 署名`（白名单字段回写；`--sync` 清标记）
+- 白名单：研究者 `manual_name_zh`→authors.name_zh、`manual_note`→authors.note；论文 `manual_paper_note`→papers.note；
+  L0/事件/簇成员/收录等**不可**经 md 修改；结构化变更走 judgments/裁决队列
 
 ## 陷阱（实测踩过）
 

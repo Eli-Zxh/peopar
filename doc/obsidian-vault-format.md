@@ -106,6 +106,13 @@
 ### 事件笔记
 状态 + 来源 URL + 论文级标记/人员级标记 wikilink。
 
+### 人工编辑区（导出不覆盖）
+- **frontmatter `manual_*` 键**：`manual_note`/`manual_name_zh`/`manual_paper_note` 等——人工写入，
+  export_vault 保留；`notes_sync apply` 按白名单回写（见 SKILL 工作流 9）
+- **正文人工批注块**：`<details class="pp-note"><summary>📝 人工批注（本区导出不覆盖）</summary>…</details>`
+  ——Obsidian 阅读可见可编辑，导出不覆盖
+- 画像/方向正文修订：直接改正文会被下次导出重写；如需持久请用批注区或经 notes_sync/裁决回写权威层
+
 ## 五、链接跳转规则
 
 - **vault 笔记内的 wikilink 走 Obsidian 原生**（点击打开对应 md 阅读视图），插件不劫持点击。
