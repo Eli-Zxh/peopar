@@ -203,8 +203,14 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
                 res_by_dir.setdefault(cid, []).append((aid, a["name_display"]))
 
         focus = content.get("focus", "")
+        pa_ids = [r["paper_id"] for r in conn.execute(
+            """SELECT pa.paper_id FROM paper_authors pa
+               JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+               WHERE pa.author_id=? ORDER BY
+                 (SELECT cited_by_count FROM papers p WHERE p.id=pa.paper_id) DESC LIMIT 60""",
+            (domain, aid))]
         front = {
-            "type": "researcher", "id": aid, "name": f'"{a["name_display"]}"',
+            "type": "researcher", "id": aid, "name": f'"{a["name_display"]}"', "paper_ids": pa_ids,
             "name_zh": f'"{a["name_zh"] or ""}"',
             "tier": a["tier"], "domain": domain, "papers": npapers,
             "institution": f'"{aff["institution"]}"' if aff else '""',

@@ -149,8 +149,35 @@ export class VaultProvider implements DataProvider {
   async author(id: string): Promise<AuthorDetail> {
     const f = this.file(`${this.P}/researchers/${id}.md`);
     const fm = f ? this.fm(f) : {};
-    // 该作者论文：反向扫描 papers md
+    // 该作者论文：解析 vault 研究者笔记正文「## 论文」清单行 + frontmatter paper_ids
     const papers: any[] = [];
+    const pids: number[] = (fm.paper_ids || []);
+    if (f && pids.length) {
+      const txt = await this.app.vault.adapter.read(f.path);
+      const listRe = /^\d+\.\s+(.+?)\s*（(\d{4})\s*·\s*被引\s*(\d+)）(?:\s*\[PubMed\]\(https:\/\/pubmed\.ncbi\.nlm\.nih\.gov\/(\d+)\/\))?/gm;
+      let m: RegExpExecArray | null; let i = 0;
+      while ((m = listRe.exec(txt)) !== null && i < pids.length) {
+        const pid = pids[i++];
+        const title = m[1].replace(/\u005C[\u005C?]/g, "").replace(/\*\*/g, "");
+        papers.push({ id: pid, title, year: +m[2], cited_by_count: +m[3],
+          pmid: m[4] || null, journal: "", retraction_status: "none", doi: null,
+          position: null, n_flags: 0 });
+      }
+    }
+    // 论文正文无清单时尝试布局 JSON（图节点论文）兜底
+    if (!papers.length) {
+      const lay = await this.layout("neuroling").catch(() => null);
+      if (lay) {
+        for (const pn of lay.papers || []) {
+          const pid = Number(pn.id.replace("p:", ""));
+          if (pids.includes(pid)) {
+            papers.push({ id: pid, title: pn.title || "", year: null, cited_by_count: pn.cite ?? 0,
+              pmid: pn.pmid || null, journal: "", retraction_status: "none", doi: null,
+              position: null, n_flags: 0 });
+          }
+        }
+      }
+    }
     const flags: any[] = [];
     const dirs: any[] = [];
     for (const pf of this.files("papers")) {

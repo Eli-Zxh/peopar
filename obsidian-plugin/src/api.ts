@@ -87,7 +87,7 @@ export interface DataProvider {
 /** 信息化方向图谱布局数据（analyze/layout.py 产物；宏观区域 + 论文/作者散点 + 连线） */
 export interface LayoutNode { id: string; x: number; y: number; r: number; cluster_id: number; affinity: number | null; }
 export interface LayoutDir extends LayoutNode { name: string | null; size: number; }
-export interface LayoutPaper extends LayoutNode { paper_id?: number; title?: string; cite?: number; }
+export interface LayoutPaper extends LayoutNode { paper_id?: number; title?: string; cite?: number; abstract?: string; note?: string; pmid?: string | null; }
 export interface LayoutAuthor extends LayoutNode { name?: string; zh?: string; }
 export interface LayoutData {
   domain: string; batch: string;

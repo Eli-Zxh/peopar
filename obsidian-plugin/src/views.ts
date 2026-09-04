@@ -270,36 +270,46 @@ export class AtlasApp {
     });
   }
 
-  /** 论文面板：显示 DB/节点数据（题目/期刊/摘要/笔记/原文链接/作者）并可编辑笔记与摘要注记 */
+  /** 论文页：标题(别名)/期刊/年份/摘要/笔记/方向关联/作者；Live 编辑写回 */
   async openPaper(pid: string, node?: any) {
-    let d: any = node ? { title: node.title, abstract: node.abstract || "", note: node.note || "",
-      pmid: node.pmid, cited: node.cite, authors: [] } : null;
+    let d: any = null;
     if (this.live) {
-      try { d = await this.live.get(`/api/paper/${pid}`); } catch { /* 用节点数据兜底 */ }
+      try { d = await this.live.get(`/api/paper/${pid}`); } catch { d = null; }
     }
-    if (!d || !d.title) { new Notice("论文信息不可用"); return; }
-    const el = this.el.querySelector(".pp-main") as HTMLElement;
-    const ov = el.createEl("div", { cls: "pp-overlay" });
-    ov.innerHTML = `
-      <div class="pp-card pp-paper-panel">
-        <div class="pp-panel-head"><b>论文</b> <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
-        <h3>${esc(d.title)}</h3>
-        <div class="pp-meta">${d.year || ""} · ${esc(d.journal || "")} · 被引 <b>${d.cited ?? d.cite ?? 0}</b>
-          ${d.retraction_status && d.retraction_status !== "none" ? ` · ⚠️ ${esc(d.retraction_status)}` : ""}
-          ${d.pmid ? ` · <a class="pp-ext" href="https://pubmed.ncbi.nlm.nih.gov/${d.pmid}/" target="_blank">PubMed</a>` : ""}</div>
-        ${(d.authors || []).length ? `<div class="pp-meta">作者：${(d.authors || []).map((x: any) => esc(x.name_display)).join("、")}</div>` : ""}
-        <div class="pp-sec"><b>摘要${d.abstract_override ? "（人工注记）" : ""}</b>
-          <div class="pp-meta">${esc(d.display_abstract || d.abstract || "（无摘要）")}</div></div>
-        ${this.live ? `
-          <div class="pp-sec"><b>📝 笔记（写回数据库）</b>
-            <textarea id="pp-note" class="pp-input" rows="2">${esc(d.note || "")}</textarea>
-            <div class="pp-sec"><b>摘要注记（覆盖显示，不改源摘要）</b>
-              <textarea id="pp-absov" class="pp-input" rows="2">${esc(d.abstract_override || "")}</textarea></div>
-            <button class="pp-btn pp-btn-primary" data-save>保存修订</button></div>`
-        : `<div class="pp-sec"><b>📝 笔记</b><div class="pp-meta">${esc(d.note || "（无笔记）")}</div></div>
-           <div class="pp-meta">启用「实时服务」后可在插件内编辑并写回数据库。</div>`}
-        <div class="pp-sec pp-meta">论文 #${pid} · DB 权威存储 · vault 内不建散文件</div>
-      </div>`;
+    // 静态：布局 JSON 兜底（图节点论文带摘要/笔记）
+    if (!d) {
+      const lay = await this.provider.layout(this.domain).catch(() => null);
+      const hit = lay?.papers?.find((p: any) => p.id === `p:${pid}` || String(p.paper_id) === pid);
+      if (hit) d = { title: hit.title, title_cn: null, year: null, journal: "",
+        abstract: hit.abstract || "", display_abstract: hit.abstract || "",
+        note: hit.note || "", pmid: hit.pmid || null, cited: hit.cite, affinity: hit.affinity,
+        authors: [] };
+    }
+    if (!d) { new Notice("论文详情不可用（实时服务下可获取全量）"); return; }
+    const ov = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
+    const card = ov.createEl("div", { cls: "pp-card pp-paper-panel" });
+    card.innerHTML = `<div class="pp-panel-head"><b>论文</b>
+      <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
+      <h3>${esc(d.title_cn || d.title)}</h3>
+      <div class="pp-meta">${d.year || ""} · ${esc(d.journal || "")} · 被引 <b>${d.cited ?? d.cite ?? 0}</b>
+        ${d.retraction_status && d.retraction_status !== "none" ? ` · ⚠️ ${esc(d.retraction_status)}` : ""}
+        ${d.pmid ? ` · <a class="pp-ext" href="https://pubmed.ncbi.nlm.nih.gov/${d.pmid}/" target="_blank">PubMed</a>` : ""}
+        ${d.affinity != null ? ` · 与方向关联度 <b>${d.affinity.toFixed(2)}</b>` : ""}</div>
+      ${d.title_cn ? `<div class="pp-meta">原文：${esc(d.title)}</div>` : ""}
+      ${(d.authors || []).length ? `<div class="pp-meta" style="margin-top:4px">作者：${(d.authors as any[]).map((x: any) => esc(x.name_display)).join("、")}</div>` : ""}
+      <div class="pp-sec"><b>摘要${d.abstract_override ? "（人工注记）" : ""}</b>
+        <div class="pp-meta" style="white-space:pre-wrap">${esc(d.display_abstract || d.abstract || "（无摘要——启用实时服务可获取完整摘要）")}</div></div>
+      ${d.note ? `<div class="pp-sec"><b>📝 笔记</b><div class="pp-meta">${esc(d.note)}</div></div>` : ""}
+      ${this.live ? `
+        <div class="pp-sec"><b>中文名/总结（title_cn，图上优先显示）</b>
+          <textarea id="pp-titlecn" class="pp-input" rows="2">${esc(d.title_cn || "")}</textarea></div>
+        <div class="pp-sec"><b>📝 笔记</b>
+          <textarea id="pp-note" class="pp-input" rows="2">${esc(d.note || "")}</textarea></div>
+        <div class="pp-sec"><b>摘要注记（覆盖显示，不改源摘要）</b>
+          <textarea id="pp-absov" class="pp-input" rows="2">${esc(d.abstract_override || "")}</textarea></div>
+        <button class="pp-btn pp-btn-primary" data-save>保存修订</button>`
+      : `<div class="pp-meta" style="margin-top:8px">启用「实时服务」后可在插件内编辑（中文总结/笔记/摘要注记）。</div>`}
+      <div class="pp-meta" style="margin-top:6px">论文 #${pid} · DB 权威存储</div>`;
     ov.querySelector("[data-close]")?.addEventListener("click", () => ov.remove());
     ov.addEventListener("click", (ev: MouseEvent) => { if (ev.target === ov) ov.remove(); });
     const save = ov.querySelector("[data-save]");
@@ -308,6 +318,7 @@ export class AtlasApp {
       await this.live.post(`/api/paper/${pid}/edit`, {
         note: (ov.querySelector("#pp-note") as HTMLTextAreaElement)?.value ?? null,
         abstract_override: (ov.querySelector("#pp-absov") as HTMLTextAreaElement)?.value ?? null,
+        title_cn: (ov.querySelector("#pp-titlecn") as HTMLTextAreaElement)?.value ?? null,
         by: this.user,
       });
       new Notice("论文修订已写回数据库");
@@ -344,6 +355,19 @@ export class AtlasApp {
   private async renderMarkdown(mdText: string, into: HTMLElement) {
     const cm = new Component();
     await MarkdownRenderer.render(this.plugin.app, mdText, into, "", cm);
+    // wikilink 跳转：BG… → 研究者档案；direction-N → 方向笔记；paper-N → 论文页
+    into.addEventListener("click", (ev: MouseEvent) => {
+      const a = (ev.target as HTMLElement).closest("a.internal-link") as HTMLAnchorElement | null;
+      if (!a) return;
+      const h = a.getAttribute("data-href") || a.getAttribute("href") || "";
+      const m = /^(BG\d+|direction-\d+|paper-\d+)$/i.exec(h.replace(/^#/, ""));
+      if (!m) return;
+      ev.preventDefault(); ev.stopPropagation();
+      const tok = m[1];
+      if (/^BG/i.test(tok)) this.openAuthor(tok);
+      else if (tok.startsWith("direction-")) this.openDirection(+tok.split("-")[1]);
+      else if (tok.startsWith("paper-")) this.openPaper(tok.split("-")[1]);
+    });
   }
 
   /** 方向笔记视图（在「研究方向」页签内渲染方向 md；含编辑/查看研究者入口） */
@@ -367,7 +391,6 @@ export class AtlasApp {
     const body = sec.querySelector(".pp-dirnote") as HTMLElement;
     const cm = new Component();
     await MarkdownRenderer.render(this.plugin.app, mdText, body, "", cm);
-    body.querySelectorAll("a.internal-link").forEach((a) => a.addEventListener("click", (ev) => ev.stopPropagation()));
     sec.querySelector("[data-back-dirs]")?.addEventListener("click", () => this.loadDirections());
     sec.querySelector("[data-persons]")?.addEventListener("click", () => {
       this.showTab("researchers2");
