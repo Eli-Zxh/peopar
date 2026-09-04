@@ -50,7 +50,7 @@ export interface Researcher {
 export interface DirectionResp { cluster_id: number; name: string | null; label: number; display: string; domain: string; researchers: Researcher[]; }
 
 export interface AuthorDetail {
-  id: string; name_display: string; name_zh?: string | null; tier: string; orcid?: string | null; openalex_id?: string | null;
+  id: string; name_display: string; note?: string | null; name_zh?: string | null; tier: string; orcid?: string | null; openalex_id?: string | null;
   aliases: any[]; affiliations: Inst[]; flags: any[]; clusters: any[]; papers: any[]; collaborators: any[];
   audit: any[];
 }
@@ -76,6 +76,7 @@ export interface DataProvider {
   directionResearchers(cid: number): Promise<DirectionResp>;
   author(id: string): Promise<AuthorDetail>;
   authorSnapshot(id: string): Promise<AuthorSnapshotResp | null>;
+  authorTags(id: string): Promise<{ tag: string; dim: string; status: string }[]>;
   events(): Promise<FraudEvent[]>;
   eventDetail(id: number): Promise<FraudEventDetail>;
   search(q: string): Promise<any>;

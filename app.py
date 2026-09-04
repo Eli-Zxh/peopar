@@ -327,6 +327,13 @@ class API:
         return {"ok": True}
 
     @staticmethod
+    def author_tags(conn, aid):
+        return rows_to_list(conn.execute(
+            """SELECT v.tag, v.dim, t.status, t.basis FROM researcher_tags t
+               JOIN tag_vocab v ON v.id=t.tag_id
+               WHERE t.author_id=? AND t.status!='rejected' ORDER BY v.dim""", (aid,)))
+
+    @staticmethod
     def author_snapshot(conn, aid):
         s = conn.execute(
             """SELECT s.*, a.name_display, a.name_zh FROM author_snapshots s
@@ -590,6 +597,16 @@ class API:
         return {"ok": True}
 
     @staticmethod
+    def set_note(conn, aid, body):
+        """研究者笔记（自由批注/联系备注）→ authors.note，by=user。"""
+        by = body.get("by", "user")
+        note = (body.get("note") or "").strip()
+        conn.execute("UPDATE authors SET note=? WHERE id=?", (note or None, aid))
+        audit(conn, f"user:{by}", "author.note", "author", aid, {"note": note[:200]})
+        conn.commit()
+        return {"ok": True}
+
+    @staticmethod
     def add_hanzi(conn, aid, body):
         hanzi = body.get("hanzi", "").strip()
         by = body.get("by", "user")
@@ -797,6 +814,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(API.paper(conn, int(m.group(1))))
                 elif m := re.fullmatch(r"/api/author/(BG\d+)/snapshot", path):
                     self._json(API.author_snapshot(conn, m.group(1)) or {})
+                elif m := re.fullmatch(r"/api/author/(BG\d+)/tags", path):
+                    self._json(API.author_tags(conn, m.group(1)))
                 elif m := re.fullmatch(r"/api/event/(\d+)", path):
                     self._json(API.event(conn, int(m.group(1))))
                 elif m := re.fullmatch(r"/api/audit", path):
@@ -825,6 +844,8 @@ class Handler(BaseHTTPRequestHandler):
             try:
                 if m := re.fullmatch(r"/api/alias/(\d+)/verify", path):
                     self._json(API.verify_alias(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/author/(BG\d+)/note", path):
+                    self._json(API.set_note(conn, m.group(1), body))
                 elif m := re.fullmatch(r"/api/author/(BG\d+)/hanzi", path):
                     self._json(API.add_hanzi(conn, m.group(1), body))
                 elif m := re.fullmatch(r"/api/flag/(\d+)/confirm-l0", path):

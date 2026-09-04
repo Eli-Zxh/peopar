@@ -1,4 +1,4 @@
-import { ItemView, FileView, Notice, TFile } from "obsidian";
+import { ItemView, FileView, Notice, TFile, Component, MarkdownRenderer } from "obsidian";
 import * as echarts from "echarts";
 import { VIEW_TYPE, FILE_VIEW_TYPE } from "./main";
 import type PeoparPlugin from "./main";
@@ -7,7 +7,6 @@ import {
   AuthorSnapshotResp, Researcher, DirectionResp, Inst,
 } from "./api";
 import { LiveProvider } from "./live";
-import { renderAuthor, renderEvents, renderEventDetail, renderAdmin } from "./panels";
 
 export const PALETTE = ["#8B7CF6", "#5FA8D3", "#7BC8B4", "#F0A08C", "#E98AA8", "#A6C06A",
   "#7FA6C9", "#D9A8E0", "#8BC8A8", "#E8B26A", "#6FB3C9", "#C98BB0"];
@@ -69,7 +68,6 @@ export class AtlasApp {
         <button data-tab="trends">热点时间线</button>
         <button data-tab="author">研究者档案</button>
         <button data-tab="events">造假事件</button>
-        <button data-tab="admin">管理台</button>
       </nav>
       <span class="pp-sync" title="数据来源与同步时间"></span>
     </div>
@@ -86,7 +84,6 @@ export class AtlasApp {
       <section data-sec="trends" style="display:none"></section>
       <section data-sec="author" style="display:none"></section>
       <section data-sec="events" style="display:none"></section>
-      <section data-sec="admin" style="display:none"></section>
     </main>`;
 
     c.querySelectorAll(".pp-nav button").forEach(b => b.addEventListener("click", () => this.showTab((b as HTMLElement).dataset.tab!)));
@@ -126,7 +123,6 @@ export class AtlasApp {
     if (tab === "researchers") this.loadResearchers();
     if (tab === "trends") this.loadTrends();
     if (tab === "events") this.loadEvents();
-    if (tab === "admin") this.loadAdmin();
     if (tab === "graph") setTimeout(() => this.charts.forEach(ch => ch.resize()), 60);
   }
 
@@ -149,7 +145,7 @@ export class AtlasApp {
       <span class="pp-stat"><b>${ds.filter(d => d.name).length}</b> 已命名</span>
       <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.size, 0)}</b> 研究者</span>
       <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.recent, 0)}</b> 近三年论文</span>
-      <span class="pp-hint">区域=研究方向 · 论文散点（越大越重要、越靠中心越代表该方向）· ◇=研究者 · 点击下钻</span>`;
+      <span class="pp-hint">滚轮/拖拽缩放 · 论文=散点(点击看摘要与编辑) · ◇=研究者(点击档案) · 圆=方向(点击笔记) · 连线可经图例开关</span>`;
     this.renderDirList(ds);
     const layout = await this.provider.layout(this.domain).catch(() => null);
     const chartBox = this.el.querySelector("#pp-dirchart") as HTMLElement;
@@ -217,12 +213,17 @@ export class AtlasApp {
     });
     const pad = 90;
     chart.setOption({
+      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0, zoomLock: false }],
+      toolbox: { right: 6, top: 6, feature: {
+        dataZoom: { yAxisIndex: "none", title: { zoom: "缩放", back: "复位" } },
+        restore: { title: "还原" },
+      } },
       tooltip: { formatter: (p: any) => {
-        if (p.seriesIndex === 6) {
+        if (p.seriesIndex === 5) {
           const a = authorNodes[p.dataIndex]?._a;
           return `<b>${esc(a?.name ?? "")}</b>${a?.zh ? `（${esc(a.zh)}）` : ""}<br><span style="color:#8b83a0">研究者 · 点击打开档案</span>`;
         }
-        if (p.seriesIndex === 5) {
+        if (p.seriesIndex === 4) {
           const pp = paperNodes[p.dataIndex]?._p;
           const abs = (pp?.abstract || "").slice(0, 120);
           let h = `<b>${esc(pp?.title ?? "")}</b>`;
@@ -254,10 +255,10 @@ export class AtlasApp {
       ],
     });
     chart.on("click", (p: any) => {
-      if (p.seriesIndex === 6) {
+      if (p.seriesIndex === 5) {
         const a = authorNodes[p.dataIndex]?._a;
         if (a?.id) this.openAuthor(a.id);
-      } else if (p.seriesIndex === 5) {
+      } else if (p.seriesIndex === 4) {
         const pp = paperNodes[p.dataIndex]?._p;
         const pid = pp?.id?.replace("p:", "");
         if (pid) this.openPaper(pid, pp);
@@ -334,10 +335,55 @@ export class AtlasApp {
     }));
   }
 
-  /** 下钻：查看该方向研究者（信息化图谱区域点击 / 侧栏点击）。 */
+  /** 点击研究方向 → 打开该方向的 vault 笔记（图谱区域与侧栏共用）。 */
   async drillDown(cid: number) {
-    this.showTab("researchers");
-    await this.renderResearchers(cid);
+    this.openDirection(cid);
+  }
+
+  private async renderMarkdown(mdText: string, into: HTMLElement) {
+    const cm = new Component();
+    await MarkdownRenderer.render(this.plugin.app, mdText, into, "", cm);
+  }
+
+  /** 方向笔记面板：渲染 vault 方向 md + 编辑入口 */
+  async openDirection(cid: number) {
+    const dirs = this.dirs?.directions ?? [];
+    const d = dirs.find((x: any) => x.cluster_id === cid);
+    const overlay = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
+    const card = overlay.createEl("div", { cls: "pp-card pp-paper-panel" });
+    const title = d?.name || `方向 #${cid}`;
+    card.innerHTML = `<div class="pp-panel-head"><b>研究方向 · 笔记</b>
+      <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
+      <div class="pp-meta" style="margin-bottom:6px">
+        <button class="pp-btn pp-btn-sm pp-btn-primary" data-edit>✎ 编辑方向笔记（Obsidian）</button>
+        <button class="pp-btn pp-btn-sm pp-btn-ghost" data-persons>查看该方向研究者</button></div>`;
+    const body = card.createDiv();
+    const f = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/directions/direction-${cid}.md`));
+    if (f) {
+      const mdText = await this.plugin.app.vault.adapter.read(f.path);
+      await this.renderMarkdown(mdText, body);
+    } else if (d) {
+      body.innerHTML = `<h3>${esc(title)}</h3><div class="pp-meta">规模 ${d.size} · 论文 ${d.papers} ·
+        未导出笔记（运行 export_vault 后生成）</div>`;
+    }
+    overlay.querySelector("[data-close]")?.addEventListener("click", () => overlay.remove());
+    overlay.querySelector("[data-edit]")?.addEventListener("click", async () => {
+      const fm = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/directions/direction-${cid}.md`));
+      if (fm) {
+        const leaf = this.plugin.app.workspace.getLeaf(true);
+        await leaf.openFile(fm);
+        await leaf.setViewState({ type: "markdown", state: { file: fm.path, mode: "source" }, active: true });
+      } else {
+        new Notice("该方向笔记未在 vault（先运行 export_vault）");
+      }
+      overlay.remove();
+    });
+    overlay.querySelector("[data-persons]")?.addEventListener("click", () => {
+      overlay.remove();
+      this.showTab("researchers");
+      this.renderResearchers(cid);
+    });
+    overlay.addEventListener("click", (ev: MouseEvent) => { if (ev.target === overlay) overlay.remove(); });
   }
 
   // ---------- 方向·研究者 ----------
@@ -418,124 +464,184 @@ export class AtlasApp {
   }
 
   // ---------- 研究者档案 ----------
+  /** 研究者档案（笔记式）：画像 / 标签 / 代表作 / 履历 / 编辑 */
   async openAuthor(id: string) {
     this.showTab("author");
     const sec = this.el.querySelector('section[data-sec="author"]') as HTMLElement;
     sec.innerHTML = '<div class="pp-muted">加载中…</div>';
-    const [a, snap] = await Promise.all([
+    const [a, snap, tags] = await Promise.all([
       this.provider.author(id),
-      this.provider.authorSnapshot(id),
+      this.provider.authorSnapshot(id).catch(() => null),
+      this.provider.authorTags(id).catch(() => []),
     ]);
-    sec.innerHTML = renderAuthor(a, snap, this.user);
-    sec.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
+    const f0 = a.flags.filter((f: any) => f.level === "L0" && f.status !== "dismissed");
+    const f1 = a.flags.filter((f: any) => f.level === "L1" && f.status !== "dismissed");
+    const dirNameOf = (cid: number) => {
+      const d = this.dirs?.directions.find((x: any) => x.cluster_id === cid);
+      return d?.name || `方向 #${cid}`;
+    };
+    const flagBadge = (f: any) => f.level === "L0"
+      ? '<span class="pp-badge pp-b-l0">⛔ L0 确认造假</span>'
+      : '<span class="pp-badge pp-b-l1">⚠ L1 风险提示</span>';
+    const tagsHtml = (tags || []).map((x: any) =>
+      `<span class="pp-chip${x.status === "pending" ? " pp-chip-pending" : ""}" title="${esc(x.dim)}${x.status === "pending" ? "（待审）" : ""}">${esc(x.tag)}</span>`).join("");
+    const note = a.note ?? "";
+    sec.innerHTML = `
+    <div class="pp-row" style="align-items:flex-start">
+      <div class="pp-grow">
+        <div class="pp-card">
+          <div class="pp-panel-head"><b>研究者档案</b>
+            <button class="pp-btn pp-btn-sm pp-btn-ghost" data-vault-edit>✎ 打开笔记编辑</button></div>
+          <h2 style="margin:2px 0 4px">${esc(a.name_display)}
+            ${a.name_zh ? `<span class="pp-meta">（${esc(a.name_zh)}）</span>` : ""}
+            <span class="pp-badge ${a.tier === "core" ? "pp-b-core" : "pp-b-peripheral"}">${a.tier === "core" ? "核心层" : "外围层"}</span>
+            ${f0.map(flagBadge).join("")}${f1.map(flagBadge).join("")}</h2>
+          <div class="pp-meta">${esc(a.id)} · 域内论文 <b>${a.papers?.length ?? 0}</b>
+            ${a.affiliations?.[0]?.institution ? ` · 🏛 ${esc(a.affiliations[0].institution)}${a.affiliations[0].source_tag === "web" && a.affiliations[0].verified !== 1 ? ' <span class="pp-badge pp-b-pending">官网待校验</span>' : ""}` : ""}
+            ${a.orcid ? ` · <a class="pp-ext" href="${esc(a.orcid)}" target="_blank">ORCID</a>` : ""}</div>
+          ${(a.clusters?.length || tagsHtml) ? `<div class="pp-chips" style="margin-top:8px">
+            ${(a.clusters || []).map((c: any) => `<span class="pp-chip pp-chip-dir" data-dir="${c.id}">◈ ${esc(dirNameOf(c.id))}</span>`).join("")}
+            ${tagsHtml}</div>` : ""}
+          ${note ? `<div class="pp-sec"><b>📝 笔记</b><div class="pp-meta">${esc(note)}</div></div>` : ""}
+        </div>
+        ${snap?.content ? `
+        <div class="pp-card pp-snapcard">
+          <div class="pp-card-title">画像 ${statusBadge(snap.review_status || "pending")}
+            <span class="pp-meta">${esc((snap as any).model || "")}</span></div>
+          ${snap.content.focus ? `<div class="pp-snap-focus">🎯 ${esc(snap.content.focus)}</div>` : ""}
+          ${snap.content.summary ? `<div class="pp-meta">${esc(snap.content.summary)}</div>` : ""}
+          ${snap.content.key_contributions ? `<div class="pp-sec"><b>主要贡献</b><div class="pp-meta">${esc(Array.isArray(snap.content.key_contributions) ? snap.content.key_contributions.join("；") : snap.content.key_contributions)}</div></div>` : ""}
+          ${snap.content.risks ? `<div class="pp-sec"><b>风险</b><div class="pp-meta">${esc(snap.content.risks)}</div></div>` : ""}
+        </div>` : '<div class="pp-card pp-meta">该研究者画像未生成（skill 会话合成后出现）</div>'}
+        <div class="pp-card"><div class="pp-card-title">代表作（点击查看摘要/编辑）</div>
+          <div class="pp-r-rep">${a.papers.slice(0, 5).map((p: any) => `
+            <div class="pp-ev"><a href="javascript:;" data-paper="${p.id}">${esc(p.title)}</a>
+            <span class="pp-meta">（${p.year || ""} · 被引 ${p.cited_by_count || 0}）</span></div>`).join("") || "无"}</div>
+          <details><summary class="pp-meta">全部论文（${a.papers.length}）</summary>
+            <table class="pp-table"><tr><th>年份</th><th>标题</th><th>被引</th><th>状态</th></tr>
+            ${a.papers.map((p: any) => `<tr><td>${p.year || ""}</td>
+              <td><a href="javascript:;" data-paper="${p.id}">${esc(p.title)}</a></td>
+              <td>${p.cited_by_count || 0}</td><td>${flagBadges(p)}</td></tr>`).join("")}</table></details>
+        </div>
+        ${this.live ? `
+        <div class="pp-card"><div class="pp-card-title">编辑（写回数据库）</div>
+          <div class="pp-row" style="gap:8px">
+            <input id="pp-namezh" class="pp-input" placeholder="汉字真名" value="${esc(a.name_zh || "")}" style="flex:1">
+            <button class="pp-btn" data-act="hanzi">存汉字名</button></div>
+          <textarea id="pp-author-note" class="pp-input" style="width:100%;margin-top:6px" rows="2">${esc(note)}</textarea>
+          <button class="pp-btn pp-btn-primary" style="margin-top:6px" data-act="note">保存笔记</button>
+        </div>` : `<div class="pp-meta">启用「实时服务」后可在插件内编辑（汉字名/笔记）；或直接编辑 vault 笔记（manual_*）。</div>`}
+      </div>
+      <div class="pp-side">
+        ${a.affiliations?.length ? `<div class="pp-card"><div class="pp-card-title">时间履历</div><div class="pp-timeline">
+          ${a.affiliations.map((x: any) => `<div class="pp-ev"><span class="pp-ev-y">${x.start_year || "?"}${x.end_year && x.end_year !== x.start_year ? "–" + x.end_year : ""}</span>
+            ${esc(x.institution)} <span class="pp-meta">[${x.source_tag}]${x.source_tag === "web" && x.verified !== 1 ? " 待校验" : ""}</span></div>`).join("")}
+          </div></div>` : ""}
+        ${a.collaborators?.length ? `<div class="pp-card"><div class="pp-card-title">合作者（前 10）</div>
+          <div class="pp-chips">${a.collaborators.slice(0, 10).map((c: any) =>
+            `<span class="pp-chip" data-open="${esc(c.id)}">${esc(c.name_display)} ×${c.co_papers}</span>`).join("")}</div></div>` : ""}
+      </div>
+    </div>`;
+    sec.querySelectorAll("[data-paper]").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this.openPaper((b as HTMLElement).dataset.paper!);
+    }));
+    sec.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () =>
+      this.openAuthor((b as HTMLElement).dataset.open!)));
+    sec.querySelectorAll("[data-dir]").forEach((b) => b.addEventListener("click", () =>
+      this.openDirection(+(b as HTMLElement).dataset.dir!)));
+    const ve = sec.querySelector("[data-vault-edit]");
+    ve?.addEventListener("click", async () => {
+      const f = this.plugin.app.vault.getFiles().find((x) => x.path.endsWith(`/researchers/${id}.md`));
+      if (f) {
+        const leaf = this.plugin.app.workspace.getLeaf(true);
+        await leaf.openFile(f);
+        await leaf.setViewState({ type: "markdown", state: { file: f.path, mode: "source" }, active: true });
+      } else new Notice("该研究者笔记未在 vault");
+    });
+    sec.querySelectorAll("[data-act]").forEach((b) => b.addEventListener("click", async () => {
       const act = (b as HTMLElement).dataset.act!;
-      const val = (sec.querySelector("#pp-hanzi") as HTMLInputElement)?.value ?? "";
-      if (act === "hanzi" && val && this.live) {
-        await this.live.post(`/api/author/${id}/hanzi`, { hanzi: val, by: this.user });
+      if (!this.live) { new Notice("需启用实时服务"); return; }
+      if (act === "hanzi") {
+        const v = (sec.querySelector("#pp-namezh") as HTMLInputElement).value.trim();
+        if (v) { await this.live.post(`/api/author/${id}/hanzi`, { hanzi: v, by: this.user }); this.openAuthor(id); }
+      } else if (act === "note") {
+        await this.live.post(`/api/author/${id}/note`, { note: (sec.querySelector("#pp-author-note") as HTMLTextAreaElement).value, by: this.user });
+        new Notice("笔记已保存");
         this.openAuthor(id);
-      } else if (act === "review-snap" && this.live) {
-        await this.live.post(`/api/author-snapshot/${(b as HTMLElement).dataset.sid}/review`,
-          { action: (b as HTMLElement).dataset.v, by: this.user });
-        this.openAuthor(id);
-      } else if (act === "open") {
-        this.openAuthor((b as HTMLElement).dataset.aid!);
-      } else if (act === "confirm-l0" && this.live) {
-        const basis = (sec.querySelector(`#pp-basis-${(b as HTMLElement).dataset.fid}`) as HTMLInputElement)?.value ?? "";
-        if (confirm("L0 为确认造假定性，须有明确证据。确认执行？")) {
-          await this.live.post(`/api/flag/${(b as HTMLElement).dataset.fid}/confirm-l0`, { by: this.user, basis });
-          this.openAuthor(id);
-        }
-      } else if (act === "dismiss" && this.live) {
-        await this.live.post(`/api/flag/${(b as HTMLElement).dataset.fid}/dismiss`, { by: this.user });
-        this.openAuthor(id);
-      } else if (!this.live) {
-        new Notice("写操作需启用「实时服务」（设置中开启）");
       }
     }));
   }
 
-  // ---------- 事件与管理台 ----------
+  // ---------- 造假事件（卡片 + overlay 详情，渲染 vault 事件笔记） ----------
   async loadEvents() {
     const sec = this.el.querySelector('section[data-sec="events"]') as HTMLElement;
-    sec.innerHTML = await renderEvents(this.user);
-    sec.querySelectorAll("[data-open-event]").forEach(b => b.addEventListener("click", () =>
-      this.openEvent(+(b as HTMLElement).dataset.openEvent!)));
-    sec.querySelectorAll("[data-confirm-event]").forEach(b => b.addEventListener("click", async () => {
-      if (!this.live) { new Notice("需启用实时服务"); return; }
-      await this.live.post(`/api/event/${(b as HTMLElement).dataset.confirmEvent}/confirm`, { by: this.user });
-      this.loadEvents();
-    }));
-    sec.querySelectorAll("[data-confirm-l0e]").forEach(b => b.addEventListener("click", async () => {
-      if (!this.live) { new Notice("需启用实时服务"); return; }
-      const fid = +(b as HTMLElement).dataset.confirmL0e!;
-      const basis = (sec.querySelector(`#pp-basis-${fid}`) as HTMLInputElement)?.value ?? "";
-      if (confirm("确认执行 L0 定性？")) {
-        await this.live.post(`/api/flag/${fid}/confirm-l0`, { by: this.user, basis });
-        this.loadEvents();
-      }
-    }));
-    sec.querySelectorAll("[data-dismiss-flag]").forEach(b => b.addEventListener("click", async () => {
-      if (!this.live) { new Notice("需启用实时服务"); return; }
-      await this.live.post(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`, { by: this.user });
-      this.loadEvents();
-    }));
-    sec.querySelectorAll("[data-open-author]").forEach(b => b.addEventListener("click", () =>
-      this.openAuthor((b as HTMLElement).dataset.openAuthor!)));
+    const evs = await this.provider.events();
+    sec.innerHTML = `<div class="pp-card"><div class="pp-card-title">造假事件
+      <span class="pp-meta">事件以 vault 笔记呈现 · 点卡片查看详情/标记操作</span></div>
+      <div class="pp-res-grid">
+      ${evs.length ? evs.map(e => `
+        <div class="pp-card pp-r-card" data-ev="${e.id}">
+          <div class="pp-r-name">${esc(e.title)} ${statusBadge(e.status)}</div>
+          <div class="pp-meta">${esc(e.slug)}</div>
+          <div class="pp-meta" style="margin-top:6px">论文标记 <b>${e.n_paper_flags}</b> ·
+            L0 <b>${e.n_l0}</b> · L1 <b>${e.n_l1}</b></div>
+        </div>`).join("") : '<div class="pp-meta">该域暂无造假事件</div>'}
+      </div></div>`;
+    sec.querySelectorAll("[data-ev]").forEach(b => b.addEventListener("click", () =>
+      this.openEvent(+(b as HTMLElement).dataset.ev!)));
   }
 
+  /** 打开事件 overlay：渲染 vault 事件笔记（MarkdownRenderer）+ Live 标记操作 */
   async openEvent(id: number) {
-    const sec = this.el.querySelector('section[data-sec="events"]') as HTMLElement;
-    sec.innerHTML = await renderEventDetail(id, this.user);
-    sec.querySelectorAll("[data-open-author]").forEach(b => b.addEventListener("click", () =>
-      this.openAuthor((b as HTMLElement).dataset.openAuthor!)));
-    sec.querySelectorAll("[data-confirm-l0e]").forEach(b => b.addEventListener("click", async () => {
-      if (!this.live) { new Notice("需启用实时服务"); return; }
-      const fid = +(b as HTMLElement).dataset.confirmL0e!;
-      const basis = (sec.querySelector(`#pp-basis-${fid}`) as HTMLInputElement)?.value ?? "";
-      if (confirm("确认执行 L0 定性？")) {
-        await this.live.post(`/api/flag/${fid}/confirm-l0`, { by: this.user, basis });
-        this.openEvent(id);
-      }
-    }));
-    sec.querySelectorAll("[data-dismiss-flag]").forEach(b => b.addEventListener("click", async () => {
-      if (!this.live) { new Notice("需启用实时服务"); return; }
-      await this.live.post(`/api/flag/${(b as HTMLElement).dataset.dismissFlag}/dismiss`, { by: this.user });
-      this.openEvent(id);
-    }));
-  }
-
-  async loadAdmin() {
-    const sec = this.el.querySelector('section[data-sec="admin"]') as HTMLElement;
-    if (!this.live) {
-      sec.innerHTML = `<div class="pp-card"><div class="pp-card-title">管理台</div>
-        <div class="pp-meta">当前为 vault 快照模式（只读）。管理操作（快照审阅 / LLM 建议裁决 / 别名校对 / 机构校验 / webvpn 导入）需要：
-        <br>① 在插件设置中开启「实时服务」（将拉起 python3 app.py 并读取 SQLite 权威数据）；或
-        <br>② 由 skill/agent 用 CLI 执行：<code>manage/snapshot.py review</code>、<code>manage/judgment.py decide</code>、
-        <code>manage/affiliations.py verify</code> 等。
-        <br><br>数据更新：运行 <code>python3 manage/export_vault.py "vault路径"</code> 后本视图自动刷新（Obsidian 文件监听）。</div></div>`;
-      return;
+    const ev = (await this.provider.events()).find(x => x.id === id);
+    if (!ev) return;
+    const overlay = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
+    const card = overlay.createEl("div", { cls: "pp-card pp-paper-panel" });
+    card.innerHTML = `<div class="pp-panel-head"><b>造假事件</b>
+      <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>`;
+    const body = card.createDiv();
+    // vault 事件笔记渲染（若有）
+    const f = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/events/event-${id}.md`));
+    let mdText = `# ${esc(ev.title)}  `;
+    if (f) {
+      mdText = await this.plugin.app.vault.adapter.read(f.path);
+    } else if (ev.status) {
+      mdText = `# ${ev.title}\n\n> 状态：${ev.status}\n\n来源：${(ev.source_urls||[]).join(", ")}`;
     }
-    sec.innerHTML = await renderAdmin(this.user, this.domain);
-    sec.querySelectorAll("[data-act]").forEach(b => b.addEventListener("click", async () => {
-      const el = b as HTMLElement;
-      const act = el.dataset.act!;
-      if (act === "review") {
-        const sid = el.dataset.sid!, kind = el.dataset.kind!, v = el.dataset.v!;
-        await this.live!.post(`/api/${kind === "author" ? "author-snapshot" : "snapshot"}/${sid}/review`, { action: v, by: this.user });
-        this.loadAdmin();
-      } else if (act === "judge") {
-        await this.live!.post(`/api/judgment/${el.dataset.jid}/decide`, { action: el.dataset.v, by: this.user, note: el.dataset.note });
-        this.loadAdmin();
-      } else if (act === "alias") {
-        await this.live!.post(`/api/alias/${el.dataset.aid2}/verify`, { verified: el.dataset.v === "1", by: this.user });
-        this.loadAdmin();
-      } else if (act === "aff") {
-        await this.live!.post(`/api/affiliation/${el.dataset.affid}/verify`, { by: this.user });
-        this.loadAdmin();
-      } else if (act === "open") {
-        this.openAuthor(el.dataset.aid!);
+    const cm = new Component();
+    await MarkdownRenderer.render(this.plugin.app, mdText, body, "", cm);
+    // Live：人员标记操作
+    if (this.live) {
+      const detail = await this.live.get(`/api/event/${id}`);
+      const flags = detail.author_flags || [];
+      if (flags.length) {
+        const fl = body.createDiv({ cls: "pp-sec" });
+        fl.innerHTML = `<b>人员标记（实时数据）</b>`;
+        for (const x of flags) {
+          const row = fl.createDiv({ cls: "pp-meta", attr: { style: "margin:4px 0" } });
+          row.innerHTML = `[[${esc(x.name_display)}]] <span class="pp-badge pp-b-${x.level.toLowerCase()}">${x.level}</span> ${statusBadge(x.status)} ${esc((x.basis || "").slice(0, 80))}`;
+          if (x.level === "L0" && x.status === "pending") {
+            const inp = row.createEl("input", { cls: "pp-input pp-input-sm", attr: { placeholder: "定性依据" } });
+            const btn = row.createEl("button", { cls: "pp-btn pp-btn-sm pp-btn-danger", text: "人工确认 L0" });
+            btn.addEventListener("click", async () => {
+              if (!confirm("确认执行 L0 定性？")) return;
+              await this.live!.post(`/api/flag/${x.id}/confirm-l0`, { by: this.user, basis: inp.value || "" });
+              overlay.remove(); this.loadEvents();
+            });
+          } else if (x.level === "L1" && x.status !== "dismissed") {
+            const b2 = row.createEl("button", { cls: "pp-btn pp-btn-sm pp-btn-ghost", text: "排除" });
+            b2.addEventListener("click", async () => {
+              await this.live!.post(`/api/flag/${x.id}/dismiss`, { by: this.user });
+              overlay.remove(); this.loadEvents();
+            });
+          }
+          row.insertBefore(document.createTextNode(" "), row.lastChild);
+        }
       }
-    }));
+    }
+    overlay.querySelector("[data-close]")?.addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (ev2: MouseEvent) => { if (ev2.target === overlay) overlay.remove(); });
   }
 
   // ---------- 检索 ----------

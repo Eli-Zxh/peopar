@@ -182,8 +182,11 @@ export class VaultProvider implements DataProvider {
       id, name_display: fm.name ?? "", name_zh: fm.name_zh || null, tier: fm.tier ?? "peripheral",
       orcid: fm.orcid || null, openalex_id: null,
       aliases: [], affiliations: affs, flags, clusters: dirs, papers, collaborators: [], audit: [],
+      note: fm.manual_note ?? null,
     };
   }
+
+  async authorTags(id: string): Promise<{ tag: string; dim: string; status: string }[]> { return []; }
 
   async authorSnapshot(id: string): Promise<AuthorSnapshotResp | null> {
     const f = this.file(`${this.P}/researchers/${id}.md`);
