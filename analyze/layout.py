@@ -221,8 +221,16 @@ def solve(domain, k=12, include_pending=False, seed=42, out_json=None):
                 ax, ay = x + rr * math.cos(ang), y + rr * math.sin(ang)
             nodes_author.append({"id": aid, "name": a["name_display"], "zh": a["name_zh"],
                                  "x": ax, "y": ay, "r": 8 + 2 * math.log1p(a["np"] or 0), "cluster_id": cid})
-    # 作者-论文连线（作者与其代表论文：重算一次基于作者所属论文中已放置的）
-    _attach_author_edges(conn, nodes_author, nodes_paper, edges)
+
+    edges = _build_edges(conn, nodes_author, nodes_paper)
+    edges.extend(_cross_dir_edges(conn, aff, nodes_paper, centers))
+
+    for pp in nodes_paper:
+        rr = conn.execute("SELECT abstract, note, pmid FROM papers WHERE id=?", (pp["paper_id"],)).fetchone()
+        if rr:
+            pp["abstract"] = (rr["abstract"] or "")[:160]
+            pp["note"] = rr["note"] or ""
+            pp["pmid"] = rr["pmid"] or None
 
     batch = f"layout-{date.today().isoformat()}-{seed}"
     conn.execute("DELETE FROM node_layout WHERE domain_id=? AND batch_id=?", (domain, batch))
@@ -244,6 +252,75 @@ def solve(domain, k=12, include_pending=False, seed=42, out_json=None):
         print(f"[layout] 已写 {p}")
     print(f"[layout] {domain} batch={batch}: 方向 {len(nodes_dir)} / 论文 {len(nodes_paper)} / 作者 {len(nodes_author)}")
     return data
+
+
+def _shared_authors(conn, pid1, pid2) -> int:
+    r = conn.execute(
+        "SELECT COUNT(*) n FROM (SELECT author_id FROM paper_authors WHERE paper_id=? "
+        "INTERSECT SELECT author_id FROM paper_authors WHERE paper_id=?)",
+        (pid1, pid2)).fetchone()
+    return r["n"] if r else 0
+
+
+def _papers_of_author(conn, aid, by_pid):
+    ids = [r["paper_id"] for r in conn.execute(
+        "SELECT paper_id FROM paper_authors WHERE author_id=?", (aid,))]
+    return [pp for pid in ids for pp in by_pid.get(pid, [])]
+
+
+def _build_edges(conn, authors, papers):
+    """三种连线：authored 作者-论文 / cowrite 同方向论文-论文共享作者（每论文邻接 ≤3）。"""
+    edges = []
+    by_pid = {}
+    for pp in papers:
+        by_pid.setdefault(pp["paper_id"], []).append(pp)
+    for a in authors:
+        mine = _papers_of_author(conn, a["id"], by_pid)
+        mine.sort(key=lambda x: -(x.get("cite") or 0))
+        for pp in mine[:3]:
+            edges.append({"source": a["id"], "target": pp["id"], "kind": "authored", "w": 1})
+    by_dir = {}
+    for pp in papers:
+        by_dir.setdefault(pp.get("main_dir"), []).append(pp)
+    degree = {}
+    for cid, ps in by_dir.items():
+        if len(ps) > 45:
+            continue
+        pairs = []
+        for i in range(len(ps)):
+            for k in range(i + 1, len(ps)):
+                u, v = ps[i], ps[k]
+                if u.get("cluster_id") != v.get("cluster_id"):
+                    continue
+                w = _shared_authors(conn, u["paper_id"], v["paper_id"])
+                if w:
+                    pairs.append((w, u["id"], v["id"]))
+        for w, u, v in sorted(pairs, key=lambda x: -x[0]):
+            if degree.get(u, 0) >= 3 or degree.get(v, 0) >= 3:
+                continue
+            edges.append({"source": u, "target": v, "kind": "cowrite", "w": w})
+            degree[u] = degree.get(u, 0) + 1
+            degree[v] = degree.get(v, 0) + 1
+    return edges
+
+
+def _cross_dir_edges(conn, aff, papers, centers):
+    """跨方向论文 → 次方向中心虚线：论文对其它方向 affinity ≥0.55 且非主方向。"""
+    out = []
+    by_paper = {}
+    for cid, lst in aff.items():
+        for pid, a in lst:
+            by_paper.setdefault(pid, []).append((cid, a))
+    for pp in papers:
+        for cid, a in by_paper.get(pp["paper_id"], []):
+            if cid == pp.get("main_dir"):
+                continue
+            if a >= 0.55:
+                cx, cy, _ = centers.get(cid, (0, 0, 0))
+                out.append({"source": pp["id"], "target_x": cx, "target_y": cy,
+                            "to_dir": cid, "kind": "crossdir", "w": a})
+    return out
+
 
 
 def _paper_has_author(conn, aid, pid):

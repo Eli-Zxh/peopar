@@ -166,3 +166,13 @@
 .pp-sec{margin-top:8px}
 .pp-sec b{color:var(--p-sub);font-weight:500;font-size:12px;display:block;margin-bottom:2px}
 .pp-hanziwrap{margin-left:auto;display:flex;gap:6px}
+
+/* ---------- 论文/编辑 overlay 面板 ---------- */
+.pp-overlay{position:fixed;inset:0;z-index:200;background:rgba(28,22,46,.40);
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(2px)}
+.pp-paper-panel{width:min(700px,94vw);max-height:84vh;overflow:auto;padding:18px 20px}
+.pp-panel-head{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:var(--p-sub)}
+.pp-paper-panel h3{margin:6px 0;font-size:15px;line-height:1.4}
+.pp-paper-panel textarea{width:100%;min-height:52px;margin:4px 0;border:none;outline:none;
+  border-radius:10px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--p-surface);color:var(--p-ink);
+  box-shadow:inset 3px 3px 7px var(--p-sd),inset -3px -3px 7px var(--p-sl)}

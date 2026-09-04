@@ -22,3 +22,4 @@ data/layout_*_preview.json
 # 批量合成中间产物
 data/dir_snap_*.json
 data/author_snap_*.json
+data/layout_*.json

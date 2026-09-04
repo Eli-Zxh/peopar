@@ -230,53 +230,11 @@ class API:
 
     @staticmethod
     def layout(conn, domain):
-        """最新布局批次：方向/论文/作者坐标（信息化方向图谱数据源）。"""
-        batch = conn.execute(
-            "SELECT MAX(batch_id) b FROM node_layout WHERE domain_id=?", (domain,)).fetchone()["b"]
-        if not batch:
-            return {"error": f"无布局：请先运行 python3 analyze/layout.py {domain}"}
-        rows = conn.execute(
-            "SELECT * FROM node_layout WHERE domain_id=? AND batch_id=? ORDER BY type", (domain, batch))
-        out = {"domain": domain, "batch": batch, "directions": [], "papers": [], "authors": [], "edges": []}
-        dir_idx = {}
-        for r in rows:
-            rec = {"id": r["id"], "x": r["x"], "y": r["y"], "r": r["r"],
-                   "cluster_id": r["cluster_id"], "affinity": r["affinity"]}
-            if r["type"] == "direction":
-                c = conn.execute("SELECT name FROM clusters WHERE id=?", (r["cluster_id"],)).fetchone()
-                size = conn.execute("SELECT COUNT(*) n FROM author_clusters WHERE cluster_id=?",
-                                    (r["cluster_id"],)).fetchone()["n"]
-                rec["name"] = c["name"] if c else None
-                rec["size"] = size
-                dir_idx[r["cluster_id"]] = len(out["directions"])
-                out["directions"].append(rec)
-            elif r["type"] == "paper":
-                p = conn.execute(
-                    "SELECT title, cited_by_count FROM papers WHERE id=?", (r["id"][2:],)).fetchone()
-                if p:
-                    rec["title"] = p["title"]
-                    rec["cite"] = p["cited_by_count"]
-                    out["papers"].append(rec)
-            else:
-                a = conn.execute("SELECT name_display, name_zh FROM authors WHERE id=?", (r["id"],)).fetchone()
-                if a:
-                    rec["name"] = a["name_display"]
-                    rec["zh"] = a["name_zh"]
-                    out["authors"].append(rec)
-        # 作者→论文边（从布局批次的论文，按 paper_authors 现算：作者与同方向论文）
-        auth = {a["id"]: a for a in out["authors"]}
-        for aid, arec in auth.items():
-            n = 0
-            for p in out["papers"]:
-                if p.get("cluster_id") != arec.get("cluster_id") or n >= 3:
-                    continue
-                hit = conn.execute(
-                    "SELECT 1 FROM paper_authors WHERE author_id=? AND paper_id=? LIMIT 1",
-                    (aid, p["id"][2:])).fetchone()
-                if hit:
-                    out["edges"].append({"source": aid, "target": p["id"], "kind": "authored"})
-                    n += 1
-        return out
+        """信息化图谱布局：优先返回 analyze/layout.py 的完整 JSON（三型边+摘要/笔记）。"""
+        f = ROOT / "data" / f"layout_{domain}.json"
+        if f.exists():
+            return json.loads(f.read_text(encoding="utf-8"))
+        return {"error": f"无布局：请运行 python3 analyze/layout.py {domain} --out data/layout_{domain}.json"}
 
     @staticmethod
     def trends(conn, domain):
@@ -313,6 +271,60 @@ class API:
             })
         out.sort(key=lambda d: -d["recent"])
         return {"domain": domain, "series": out[:20]}
+
+    @staticmethod
+    def paper(conn, pid):
+        """论文详情（DB 权威；摘要显示人工覆盖优先）。"""
+        r = conn.execute(
+            "SELECT id, title, year, journal, doi, pmid, openalex_id, abstract, abstract_override, "
+            "note, cited_by_count, retraction_status FROM papers WHERE id=?", (pid,)).fetchone()
+        if not r:
+            return {"error": "论文不存在"}
+        out = dict(r)
+        out["display_abstract"] = r["abstract_override"] or r["abstract"]
+        out["authors"] = rows_to_list(conn.execute(
+            """SELECT a.id, a.name_display, pa.position FROM paper_authors pa
+               JOIN authors a ON a.id=pa.author_id WHERE pa.paper_id=? ORDER BY pa.position""", (pid,)))
+        return out
+
+    @staticmethod
+    def paper_edit(conn, pid, body):
+        by = body.get("by", "user")
+        sets, args = [], []
+        if "note" in body:
+            sets.append("note=?"); args.append(body.get("note"))
+        if "abstract_override" in body:
+            sets.append("abstract_override=?"); args.append(body.get("abstract_override"))
+        if not sets:
+            return {"error": "无可更新字段（note / abstract_override）"}
+        args.append(pid)
+        conn.execute(f"UPDATE papers SET {', '.join(sets)}, updated_at=datetime('now') WHERE id=?", args)
+        audit(conn, f"user:{by}", "paper.edit", "paper", pid, body)
+        conn.commit()
+        return {"ok": True}
+
+    @staticmethod
+    def direction_manual(conn, cid, body):
+        """方向人工修订：替换最新 active 快照 content（修订即终版，by=user）。"""
+        by = body.get("by", "user")
+        content = body.get("content")
+        if not content or not isinstance(content, dict):
+            return {"error": "content 必填对象"}
+        s = conn.execute(
+            """SELECT s.id, s.review_status, s.status FROM snapshots s
+               WHERE s.cluster_id=? AND s.status!='superseded' ORDER BY s.id DESC LIMIT 1""",
+            (cid,)).fetchone()
+        if not s:
+            return {"error": "该方向无快照"}
+        conn.execute(
+            "UPDATE snapshots SET content=?, model=COALESCE(model,'')||' |manual', "
+            "review_status='approved', reviewed_by=?, reviewed_at=datetime('now') WHERE id=?",
+            (json.dumps(content, ensure_ascii=False), by, s["id"]))
+        if content.get("name"):
+            conn.execute("UPDATE clusters SET name=? WHERE id=?", (content["name"], cid))
+        audit(conn, f"user:{by}", "snapshot.manual", "cluster", cid, {"snapshot_id": s["id"]})
+        conn.commit()
+        return {"ok": True}
 
     @staticmethod
     def author_snapshot(conn, aid):
@@ -781,6 +793,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(API.cluster_snapshot(conn, int(m.group(1))) or {})
                 elif m := re.fullmatch(r"/api/author/(BG\d+)", path):
                     self._json(API.author(conn, m.group(1)))
+                elif m := re.fullmatch(r"/api/paper/(\d+)", path):
+                    self._json(API.paper(conn, int(m.group(1))))
                 elif m := re.fullmatch(r"/api/author/(BG\d+)/snapshot", path):
                     self._json(API.author_snapshot(conn, m.group(1)) or {})
                 elif m := re.fullmatch(r"/api/event/(\d+)", path):
@@ -827,6 +841,10 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(API.judgment_decide(conn, int(m.group(1)), body))
                 elif path == "/api/webvpn/import":
                     self._json(API.webvpn_import(conn, body))
+                elif m := re.fullmatch(r"/api/paper/(\d+)/edit", path):
+                    self._json(API.paper_edit(conn, int(m.group(1)), body))
+                elif m := re.fullmatch(r"/api/direction/(\d+)/manual", path):
+                    self._json(API.direction_manual(conn, int(m.group(1)), body))
                 elif m := re.fullmatch(r"/api/affiliation/(\d+)/verify", path):
                     self._json(API.verify_affiliation(conn, int(m.group(1)), body))
                 else:

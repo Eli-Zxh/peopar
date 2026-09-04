@@ -240,11 +240,17 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
         else:
             body += "- 所属方向：—（小簇，未纳入导出方向）\n"
         if reps:
-            rep_titles = []
+            rep_items = []
             for pid in reps:
-                pf = conn.execute("SELECT title FROM papers WHERE id=?", (pid,)).fetchone()
-                rep_titles.append(f"[[{slug_paper(pid)}|{pf['title'][:40] if pf else pid}]]" if pf else f"[[{slug_paper(pid)}]]")
-            body += "- 代表作：" + "、".join(rep_titles) + "\n"
+                pf = conn.execute("SELECT pmid, title, year FROM papers WHERE id=?", (pid,)).fetchone()
+                if not pf:
+                    continue
+                item = f"{pf['title'][:46]}（{pf['year'] or '?'}）"
+                if pf["pmid"]:
+                    item += f" [PubMed](https://pubmed.ncbi.nlm.nih.gov/{pf['pmid']}/)"
+                rep_items.append(item)
+            if rep_items:
+                body += "- 代表作：" + "；".join(rep_items) + "\n"
         if flags:
             body += f"\n⚠️ 标记：{','.join(flags)}（详见事件笔记）\n"
         elif content.get("risks") and review == "approved":
@@ -331,102 +337,18 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
         if members:
             body += "## 代表研究者\n\n" + "、".join(f"[[{aid}]]" for aid, _ in members) + "\n\n"
         if reps:
-            rep_links = []
+            body += "## 代表论文\n\n"
             for pid in reps:
-                pf = conn.execute("SELECT title FROM papers WHERE id=?", (pid,)).fetchone()
-                rep_links.append(f"[[{slug_paper(pid)}|{pf['title'][:50] if pf else pid}]]" if pf else f"[[{slug_paper(pid)}]]")
-            body += "## 代表论文\n\n" + "、".join(rep_links) + "\n"
+                pf = conn.execute("SELECT pmid, title, year FROM papers WHERE id=?", (pid,)).fetchone()
+                if not pf:
+                    continue
+                line = f"- {pf['title']}（{pf['year'] or '?'}）"
+                if pf["pmid"]:
+                    line += f" [PubMed](https://pubmed.ncbi.nlm.nih.gov/{pf['pmid']}/)"
+                body += line + "\n"
         md_file(ddir, slug_direction(cid) + ".md", front, body)
         dir_meta[cid] = {"name": name, "file": slug_direction(cid)}
         n_dir += 1
-
-    # ---------- 论文（P2：元数据 + 方向角色锚定句；集合 = 方向代表 ∪ 研究者代表作 ∪ 域高被引） ----------
-    paper_ids = []
-    seen = set()
-    def _add(pid):
-        if pid not in seen:
-            seen.add(pid)
-            paper_ids.append(pid)
-    for cid in direction_set:
-        for r in conn.execute(
-                """SELECT DISTINCT pa.paper_id FROM author_clusters ac
-                   JOIN paper_authors pa ON pa.author_id=ac.author_id
-                   JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
-                   JOIN papers p ON p.id=pa.paper_id
-                   WHERE ac.cluster_id=? ORDER BY p.cited_by_count DESC LIMIT 5""",
-                (domain, cid)):
-            _add(r["paper_id"])
-    for reps in all_res_reps.values():
-        for pid in reps:
-            _add(pid)
-    # 域高被引补充（受 top_papers 约束；代表论文不受限，保证 wikilink 不悬空）
-    for r in conn.execute(
-            """SELECT p.id FROM papers p JOIN paper_domains pd ON pd.paper_id=p.id
-               WHERE pd.domain_id=? ORDER BY p.cited_by_count DESC LIMIT ?""",
-            (domain, top_papers)):
-        _add(r["id"])
-
-    paper_dir_roles = {}   # pid -> [(sentence, direction_name, cid)]
-    for cid in direction_set:
-        sc = snap_cache.get(cid, {})
-        content = sc.get("content", {})
-        dname = sc.get("name") or f"方向 #{cid}"
-        for field in ("definition", "current_conclusions", "timeline", "controversies"):
-            for pid in paper_ids:
-                hits = find_paper_sentences(content.get(field, ""), pid)
-                if hits:
-                    paper_dir_roles.setdefault(pid, []).append((hits[0], dname, cid))
-                    break  # 每个方向一节最多一句
-
-    n_pap = 0
-    for pid in paper_ids:
-        p = conn.execute(
-            "SELECT title, year, journal, doi, pmid, cited_by_count, retraction_status FROM papers WHERE id=?",
-            (pid,)).fetchone()
-        if not p:
-            continue
-        authors = [r["author_id"] for r in conn.execute(
-            "SELECT author_id FROM paper_authors WHERE paper_id=? ORDER BY position LIMIT 8", (pid,))]
-        dirs_of = [cid for cid in direction_set if conn.execute(
-            """SELECT 1 FROM author_clusters ac JOIN paper_authors pa ON pa.author_id=ac.author_id
-               WHERE ac.cluster_id=? AND pa.paper_id=? LIMIT 1""", (cid, pid)).fetchone()][:5]
-        front = {
-            "type": "paper", "paper_id": pid, "title": f'"{p["title"]}"',
-            "year": p["year"] or "", "journal": f'"{p["journal"]}"',
-            "doi": f'"{p["doi"] or ""}"', "pmid": f'"{p["pmid"] or ""}"',
-            "cited": p["cited_by_count"] or 0, "retraction": p["retraction_status"],
-            "authors": authors, "directions": dirs_of,
-        }
-        body = f"# {p['title']}\n\n"
-        body += f"> {p['year'] or '?'} · {p['journal']} · 被引 **{p['cited_by_count'] or 0}**" + \
-                (f" · ⚠️ {p['retraction_status']}" if p["retraction_status"] != "none" else "") + "\n\n"
-        links = []
-        if p["pmid"]:
-            links.append(f"[PubMed](https://pubmed.ncbi.nlm.nih.gov/{p['pmid']}/)")
-        if p["doi"]:
-            links.append(f"DOI: {p['doi']}")
-        if links:
-            body += " · ".join(links) + "\n\n"
-        if authors:
-            names = {}
-            for aid in authors:
-                r = conn.execute("SELECT name_display FROM authors WHERE id=?", (aid,)).fetchone()
-                if r:
-                    names[aid] = r["name_display"]
-            # 仅已导出研究者加 wikilink；其余纯文本（避免悬空链接）
-            body += "**作者**：" + "、".join(
-                f"[[{a}|{names[a]}]]" if a in researcher_set and a in names else (names.get(a) or a)
-                for a in authors) + "\n\n"
-        roles = paper_dir_roles.get(pid, [])
-        if roles:
-            body += "**方向角色**\n\n"
-            for sent, dname, cid in roles[:2]:
-                body += f"> {sent}\n>\n> — 出处：[[{slug_direction(cid)}|{dname}]] 方向快照\n\n"
-        if dirs_of:
-            body += "**所属方向**：" + "、".join(
-                f"[[{slug_direction(cid)}|{snap_cache[cid]['name'] or f'方向 #{cid}'}]]" for cid in dirs_of) + "\n"
-        md_file(pdir, slug_paper(pid) + ".md", front, body)
-        n_pap += 1
 
     # ---------- 事件 ----------
     n_ev = 0
@@ -452,65 +374,34 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
             body += f"- {u}\n"
         if paper_flags:
             body += "\n**论文级标记**：\n" + "\n".join(
-                f"- [[{slug_paper(x['paper_id'])}|{x['title'][:50]}]]（{x['flag_type']}）" for x in paper_flags) + "\n"
+                f"- {x['title'][:60]}（{x['flag_type']}）" for x in paper_flags) + "\n"
         if author_flags:
             body += "\n**人员级标记**：\n" + "\n".join(
                 f"- [[{slug_researcher(x['author_id'])}]] {x['level']}（{x['status']}）{x['basis']}" for x in author_flags) + "\n"
         md_file(edir, slug_event(ev["id"]) + ".md", front, body)
         n_ev += 1
 
-    return {"directions": n_dir, "researchers": n_res, "papers": n_pap, "events": n_ev}
+    return {"directions": n_dir, "researchers": n_res, "papers": 0, "events": n_ev}
 
 
 def export_layout(conn, out: Path, domain: str):
-    """导出最新布局批次 → <peopar>/_layout/<domain>.json（插件静态渲染信息化方向图谱）。"""
-    batch = conn.execute(
-        "SELECT MAX(batch_id) b FROM node_layout WHERE domain_id=?", (domain,)).fetchone()["b"]
-    if not batch:
-        print(f"[export-layout] {domain}: 无布局（先 analyze/layout.py {domain}）")
-        return
-    rows = conn.execute(
-        "SELECT * FROM node_layout WHERE domain_id=? AND batch_id=? ORDER BY type", (domain, batch))
-    data = {"domain": domain, "batch": batch, "directions": [], "papers": [], "authors": [], "edges": []}
-    for r in rows:
-        rec = {"id": r["id"], "x": r["x"], "y": r["y"], "r": r["r"],
-               "cluster_id": r["cluster_id"], "affinity": r["affinity"]}
-        if r["type"] == "direction":
-            c = conn.execute("SELECT name FROM clusters WHERE id=?", (r["cluster_id"],)).fetchone()
-            size = conn.execute("SELECT COUNT(*) n FROM author_clusters WHERE cluster_id=?",
-                                (r["cluster_id"],)).fetchone()["n"]
-            rec["name"] = c["name"] if c else None
-            rec["size"] = size
-            data["directions"].append(rec)
-        elif r["type"] == "paper":
-            p = conn.execute("SELECT title, cited_by_count FROM papers WHERE id=?",
-                             (r["id"][2:],)).fetchone()
-            if p:
-                rec["title"] = p["title"]
-                rec["cite"] = p["cited_by_count"]
-                data["papers"].append(rec)
-        else:
-            a = conn.execute("SELECT name_display, name_zh FROM authors WHERE id=?", (r["id"],)).fetchone()
-            if a:
-                rec["name"] = a["name_display"]
-                rec["zh"] = a["name_zh"]
-                data["authors"].append(rec)
-    auth = {a["id"]: a for a in data["authors"]}
-    for a in auth:
-        n = 0
-        for p in data["papers"]:
-            if p.get("cluster_id") != auth[a].get("cluster_id") or n >= 3:
-                continue
-            if conn.execute("SELECT 1 FROM paper_authors WHERE author_id=? AND paper_id=? LIMIT 1",
-                            (a, p["id"][2:])).fetchone():
-                data["edges"].append({"source": a, "target": p["id"], "kind": "authored"})
-                n += 1
+    """导出布局 JSON → <peopar>/_layout/<domain>.json（插件信息化方向图谱数据源）。"""
     ldir = out / "_layout"
     ldir.mkdir(parents=True, exist_ok=True)
-    (ldir / f"{domain}.json").write_text(
-        json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    print(f"[export-layout] {domain}: {len(data['directions'])} 方向 / {len(data['papers'])} 论文 / "
-          f"{len(data['authors'])} 作者 → _layout/{domain}.json")
+    src = Path(__file__).resolve().parent.parent / "data" / f"layout_{domain}.json"
+    if src.exists():
+        (ldir / f"{domain}.json").write_bytes(src.read_bytes())
+        d = json.loads(src.read_text(encoding="utf-8"))
+        print(f"[export-layout] {domain}: 复制 layout JSON（方向 {len(d.get('directions', []))} / "
+              f"论文 {len(d.get('papers', []))} / 作者 {len(d.get('authors', []))}）")
+        return
+    batch = conn.execute(
+        "SELECT MAX(batch_id) b FROM node_layout WHERE domain_id=?", (domain,)).fetchone()["b"]
+    if batch:
+        print(f"[export-layout] {domain}: 无 data/layout_{domain}.json（先 python3 analyze/layout.py {domain} "
+              f"--out data/layout_{domain}.json）")
+    else:
+        print(f"[export-layout] {domain}: 无布局")
 
 
 def main():
@@ -549,11 +440,12 @@ def main():
             {"synced_at": datetime.now().isoformat(timespec="seconds"), "topic": args.topic, "domains": stats},
             "# 百官行述 · 同步状态\n\n本目录由 `python3 manage/export_vault.py --topic \"<方向名>\"` 生成，"
             "为 SQLite 权威数据的投影快照。\n\n文件规范见仓库 `doc/obsidian-vault-format.md`。\n")
-    # 清理过期文件（本次未产出的旧 md）
-    produced = {p.name for p in out.rglob("*.md")} | {p.name for p in out.rglob("*.peopar")}
-    for p in out.rglob("*.md"):
-        if p.name not in produced:
-            p.unlink()
+    # 清理：论文改为 DB 存储，删除遗留 papers/ 目录；其余子目录保留
+    stale = out / "papers"
+    if stale.is_dir():
+        import shutil
+        shutil.rmtree(stale)
+        print("[export] 已删除遗留 papers/ 目录（论文改存 DB）")
     conn.close()
     print(f"[export] 完成 → {out}")
 

@@ -25,8 +25,8 @@
         ├── <domain>.peopar          域视图入口（双击以插件视图打开）
         ├── directions/direction-<cid>.md   研究方向笔记
         ├── researchers/BG<id>.md    研究者笔记
-        ├── papers/paper-<id>.md     论文笔记
         └── events/event-<id>.md     造假事件笔记
+        （论文**不进 vault**：DB 权威存储，图谱/布局 JSON 携带标题/摘要/笔记；见下）
 ```
 
 命名约定：**文件名用系统主键**（direction-<cid> / BG<id> / paper-<id> / event-<id>），
@@ -38,7 +38,7 @@
 |---|---|---|---|
 | `direction` | directions/… | `domain, direction_id, name, size, papers, recent, citations, review, label, years(JSON字符串), linked[], top_authors[]` | 方向聚合图、热点时间线 |
 | `researcher` | researchers/… | `id, name, name_zh, tier, domain, papers, institution, inst_verified, orcid, flags[], directions[], representative[], focus, review` | 方向·研究者、档案、搜索 |
-| `paper` | papers/… | `paper_id, title, year, journal, doi, pmid, cited, retraction, authors[], directions[]` | 代表作链接、档案、搜索 |
+| （论文） | 不建文件 | 存 DB（title/abstract/note/abstract_override…）；布局 `_layout/<domain>.json` 携带 title/abstract 摘要节选/note/pmid | 图谱节点 hover/面板、编辑 |
 | `event` | events/… | `event_id, slug, title, status, source_urls, paper_flags[], author_flags[]` | 造假事件页 |
 | `peopar-view` | <domain>.peopar | `domain, type: peopar-view, topic` | 扩展名文件视图触发 |
 | （元数据） | `_sync.md` | `synced_at, topic, domains` | 视图显示同步时间/新鲜度 |
@@ -86,6 +86,9 @@
 
 ⚠️ 标记：L1（如有）
 ```
+
+### 论文（DB 节点数据，非文件）
+论文内容：题目/期刊/年份/摘要/笔记/原文链接/作者——存 SQLite 权威层；图谱节点 hover 显示标题+笔记+摘要节选，点击开插件内面板（可编辑笔记/摘要注记）。研究者/方向笔记中的代表作以「标题（年份）[PubMed]」引用。
 
 ### 论文笔记（P2：元数据 + 方向角色锚定句）
 ```markdown

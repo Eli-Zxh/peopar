@@ -152,10 +152,12 @@ export class AtlasApp {
       <span class="pp-hint">区域=研究方向 · 论文散点（越大越重要、越靠中心越代表该方向）· ◇=研究者 · 点击下钻</span>`;
     this.renderDirList(ds);
     const layout = await this.provider.layout(this.domain).catch(() => null);
+    const chartBox = this.el.querySelector("#pp-dirchart") as HTMLElement;
     if (layout && layout.directions?.length) {
       this.drawInfoGraph(layout);
     } else {
-      this.drawDirGraph();
+      chartBox.innerHTML = '<div class="pp-meta" style="padding:30px">暂无布局数据：运行 <code>python3 analyze/layout.py ' + this.domain +
+        ' --out data/layout_' + this.domain + '.json</code> 后重新导出。</div>';
     }
   }
 
@@ -167,208 +169,175 @@ export class AtlasApp {
     const byCluster = new Map<number, number>();
     g.directions.forEach((d: any, i: number) => byCluster.set(d.cluster_id, i));
     const dirColor = (cid: number) => PALETTE[(byCluster.get(cid) ?? 0) % PALETTE.length];
-    const paperMap = new Map(g.papers.map((p: any) => [p.id, p]));
+    const dirmap = new Map<number, any>(g.directions.map((d: any) => [d.cluster_id, d]));
+    const paperById = new Map<string, any>(g.papers.map((p: any) => [p.id, p]));
+    const authById = new Map<string, any>(g.authors.map((a: any) => [a.id, a]));
+    // ---- 尺寸约束（相对画布） ----
+    const maxR = Math.max(...g.directions.map((d: any) => Math.hypot(d.x, d.y) + d.r), 1);
+    const s = 330 / maxR;                       // 坐标→像素比例（区域直径 ≤ ~0.5 画布高）
+    const dirSize = (d: any) => Math.max(64, Math.min(230, d.r * 2 * s * 0.62));
+    const paperSize = (p: any) => Math.max(3.2, Math.min(7.5, 2.4 + (p.r - 5) * 0.16));
+    const authorSize = (a: any) => Math.max(10, Math.min(20, a.r * 0.9));
+    // ---- 区域（半透明包络圆，直径反映簇规模） ----
+    const dirNodes = g.directions.map((d: any) => ({
+      value: [d.x, d.y], symbolSize: dirSize(d), cluster_id: d.cluster_id, _d: d,
+      itemStyle: { color: dirColor(d.cluster_id), opacity: 0.13, borderColor: dirColor(d.cluster_id), borderWidth: 2 },
+      label: { show: true, formatter: () => (d.name || "").slice(0, 20), fontSize: 11, fontWeight: 600,
+        color: "#4a4265", position: "top" },
+    }));
+    // ---- 连线（三型） ----
+    const mkLine = (kind: string, style: any) => g.edges.filter((e: any) => e.kind === kind).map((e: any) => {
+      if (kind === "crossdir") { const sr: any = paperById.get(e.source);
+        return { coords: [[sr?.x ?? 0, sr?.y ?? 0], [e.target_x, e.target_y]] }; }
+      const s2 = paperById.get(e.source) ?? authById.get(e.source);
+      const t2 = paperById.get(e.target);
+      return s2 && t2 ? { coords: [[s2.x, s2.y], [t2.x, t2.y]] } : null;
+    }).filter(Boolean).map((c: any) => ({ ...c, lineStyle: { ...style, width: style.width } }));
+    const authored = mkLine("authored", { color: "#8f84c4", width: 0.9, opacity: 0.5 });
+    const cowrite = mkLine("cowrite", { color: "#cfc8e8", width: 0.6, opacity: 0.35 });
+    const crossdir = mkLine("crossdir", { color: "#c09a6a", width: 1.1, opacity: 0.7, type: "dashed" });
+    // ---- 论文（小散点，色深/亮度表达重要性） ----
+    const paperNodes = g.papers.map((p: any) => ({
+      value: [p.x, p.y], symbolSize: paperSize(p), cluster_id: p.cluster_id, _p: p,
+      itemStyle: { color: dirColor(p.cluster_id),
+        opacity: p.affinity == null ? 0.35 : 0.5 + (p.affinity ?? 0) * 0.5,
+        borderColor: "#fff", borderWidth: p.affinity != null ? 1 : 0 },
+      label: { show: (p.affinity ?? 0) >= 0.93 && p.title,
+        formatter: () => (p.title || "").slice(0, 14), fontSize: 8, color: "#8b83a0" },
+    }));
+    const authorNodes = g.authors.map((a: any) => ({
+      value: [a.x, a.y], symbolSize: authorSize(a), symbol: "diamond", cluster_id: a.cluster_id, _a: a,
+      itemStyle: { color: dirColor(a.cluster_id), opacity: 0.95, borderColor: "#fff", borderWidth: 1.5 },
+      label: { show: authorSize(a) >= 13, formatter: () => (a.name || "").slice(0, 9), fontSize: 9, color: "#4a4265" },
+    }));
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     g.directions.forEach((d: any) => {
       x0 = Math.min(x0, d.x - d.r); x1 = Math.max(x1, d.x + d.r);
       y0 = Math.min(y0, d.y - d.r); y1 = Math.max(y1, d.y + d.r);
     });
-    const pad = 100;
-    const dirNodes = g.directions.map((d: any) => ({
-      value: [d.x, d.y], symbolSize: d.r * 2, cluster_id: d.cluster_id, _dir: d,
-      itemStyle: { color: dirColor(d.cluster_id), opacity: 0.14, borderColor: dirColor(d.cluster_id),
-        borderWidth: 2 },
-      label: { show: true, formatter: () => (d.name || "").slice(0, 22), fontSize: 11, fontWeight: 600,
-        color: "#4a4265", position: "top" },
-    }));
-    const lineData = g.edges.map((e: any) => {
-      const a: any = g.authors.find((x: any) => x.id === e.source);
-      const p: any = paperMap.get(e.target);
-      return a && p ? { coords: [[a.x, a.y], [p.x, p.y]] } : null;
-    }).filter(Boolean);
-    const paperNodes = g.papers.map((p: any) => ({
-      value: [p.x, p.y], symbolSize: Math.max(3, p.r * 2), cluster_id: p.cluster_id, _p: p,
-      itemStyle: { color: dirColor(p.cluster_id), opacity: p.affinity == null ? 0.35 : 0.9,
-        borderColor: "#ffffff", borderWidth: p.affinity == null ? 0 : 1 },
-      label: { show: (p.affinity ?? 0) >= 0.92 && p.title,
-        formatter: () => (p.title || "").slice(0, 18), fontSize: 9, color: "#8b83a0" },
-    }));
-    const authorNodes = g.authors.map((a: any) => ({
-      value: [a.x, a.y], symbolSize: Math.max(10, a.r * 2), symbol: "diamond", cluster_id: a.cluster_id, _a: a,
-      itemStyle: { color: dirColor(a.cluster_id), opacity: 0.95, borderColor: "#fff", borderWidth: 1.5 },
-      label: { show: a.r >= 9, formatter: () => (a.name || "").slice(0, 9), fontSize: 10, color: "#4a4265" },
-    }));
+    const pad = 90;
     chart.setOption({
       tooltip: { formatter: (p: any) => {
-        if (p.seriesIndex === 3) {
+        if (p.seriesIndex === 6) {
           const a = authorNodes[p.dataIndex]?._a;
           return `<b>${esc(a?.name ?? "")}</b>${a?.zh ? `（${esc(a.zh)}）` : ""}<br><span style="color:#8b83a0">研究者 · 点击打开档案</span>`;
         }
-        if (p.seriesIndex === 2) {
+        if (p.seriesIndex === 5) {
           const pp = paperNodes[p.dataIndex]?._p;
-          return `<b>${esc(pp?.title ?? "")}</b><br>被引 ${pp?.cite ?? 0}${pp?.affinity != null ? ` · 方向关联度 ${pp.affinity.toFixed(2)}` : ""}<br><span style="color:#8b83a0">点击打开论文</span>`;
+          const abs = (pp?.abstract || "").slice(0, 120);
+          let h = `<b>${esc(pp?.title ?? "")}</b>`;
+          if (pp?.note) h += `<br><span style="color:#b96a00">📝 ${esc(pp.note.slice(0, 90))}</span>`;
+          if (abs) h += `<br><span style="color:#68727f">${esc(abs)}${abs.length >= 120 ? "…" : ""}</span>`;
+          h += `<br><span style="color:#8b83a0">被引 ${pp?.cite ?? 0}${pp?.affinity != null ? " · 关联 " + pp.affinity.toFixed(2) : ""} · 点击编辑/查看</span>`;
+          return h;
         }
         if (p.seriesIndex === 0) {
-          const dd = dirNodes[p.dataIndex]?._dir;
-          return `<b>${esc(dd?.name ?? "")}</b><br>规模 ${dd?.size ?? ""}<br><span style="color:#8b83a0">点击查看该方向研究者</span>`;
+          const d = dirNodes[p.dataIndex]?._d;
+          return `<b>${esc(d?.name ?? "")}</b><br>规模 ${d?.size ?? ""}<br><span style="color:#8b83a0">点击查看该方向研究者</span>`;
         }
         return "";
       } },
-      grid: { left: 8, right: 8, top: 8, bottom: 8 },
+      legend: { bottom: 0, textStyle: { fontSize: 10 }, selected: { "作者归属": true, "跨方向关联": true, "论文共著": false },
+        data: ["作者归属", "跨方向关联", "论文共著"] },
+      grid: { left: 8, right: 8, top: 8, bottom: 26 },
       xAxis: { type: "value", min: x0 - pad, max: x1 + pad, axisLine: { show: false },
         axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
       yAxis: { type: "value", min: y0 - pad, max: y1 + pad, axisLine: { show: false },
         axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
       series: [
-        { name: "方向区域", type: "scatter", data: dirNodes, z: 1, roam: true, scaleLimit: { min: 0.3, max: 6 } },
-        { name: "作者-论文连线", type: "lines", data: lineData, z: 2, silent: true,
-          lineStyle: { color: "#b8b0d0", width: 0.6, opacity: 0.3 } },
+        { name: "方向区域", type: "scatter", data: dirNodes, z: 1, roam: true, scaleLimit: { min: 0.3, max: 8 } },
+        { name: "作者归属", type: "lines", data: authored, z: 2, silent: true },
+        { name: "论文共著", type: "lines", data: cowrite, z: 2, silent: true },
+        { name: "跨方向关联", type: "lines", data: crossdir, z: 2, silent: true },
         { name: "论文", type: "scatter", data: paperNodes, z: 3, roam: true },
         { name: "研究者", type: "scatter", data: authorNodes, z: 4, roam: true },
       ],
     });
     chart.on("click", (p: any) => {
-      if (p.seriesIndex === 3) {
+      if (p.seriesIndex === 6) {
         const a = authorNodes[p.dataIndex]?._a;
         if (a?.id) this.openAuthor(a.id);
-      } else if (p.seriesIndex === 2) {
+      } else if (p.seriesIndex === 5) {
         const pp = paperNodes[p.dataIndex]?._p;
         const pid = pp?.id?.replace("p:", "");
-        if (pid) this.openPaper(pid);
+        if (pid) this.openPaper(pid, pp);
       } else if (p.seriesIndex === 0) {
-        const d = dirNodes[p.dataIndex]?._dir;
-        if (d) this.drillDown(d.cluster_id, d.cluster_id);
+        const d = dirNodes[p.dataIndex]?._d;
+        if (d) this.drillDown(d.cluster_id);
       }
     });
   }
 
-  /** 打开论文：优先 vault 内 paper 笔记（Obsidian 原生打开），否则提示 */
-  openPaper(pid: string) {
-    const f = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/papers/paper-${pid}.md`));
-    if (f) {
-      this.plugin.app.workspace.openLinkText(f.basename, f.path);
-    } else {
-      new Notice(`论文 #${pid} 未在 vault 快照（实时模式可经服务查询）`);
+  /** 论文面板：显示 DB/节点数据（题目/期刊/摘要/笔记/原文链接/作者）并可编辑笔记与摘要注记 */
+  async openPaper(pid: string, node?: any) {
+    let d: any = node ? { title: node.title, abstract: node.abstract || "", note: node.note || "",
+      pmid: node.pmid, cited: node.cite, authors: [] } : null;
+    if (this.live) {
+      try { d = await this.live.get(`/api/paper/${pid}`); } catch { /* 用节点数据兜底 */ }
     }
+    if (!d || !d.title) { new Notice("论文信息不可用"); return; }
+    const el = this.el.querySelector(".pp-main") as HTMLElement;
+    const ov = el.createEl("div", { cls: "pp-overlay" });
+    ov.innerHTML = `
+      <div class="pp-card pp-paper-panel">
+        <div class="pp-panel-head"><b>论文</b> <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
+        <h3>${esc(d.title)}</h3>
+        <div class="pp-meta">${d.year || ""} · ${esc(d.journal || "")} · 被引 <b>${d.cited ?? d.cite ?? 0}</b>
+          ${d.retraction_status && d.retraction_status !== "none" ? ` · ⚠️ ${esc(d.retraction_status)}` : ""}
+          ${d.pmid ? ` · <a class="pp-ext" href="https://pubmed.ncbi.nlm.nih.gov/${d.pmid}/" target="_blank">PubMed</a>` : ""}</div>
+        ${(d.authors || []).length ? `<div class="pp-meta">作者：${(d.authors || []).map((x: any) => esc(x.name_display)).join("、")}</div>` : ""}
+        <div class="pp-sec"><b>摘要${d.abstract_override ? "（人工注记）" : ""}</b>
+          <div class="pp-meta">${esc(d.display_abstract || d.abstract || "（无摘要）")}</div></div>
+        ${this.live ? `
+          <div class="pp-sec"><b>📝 笔记（写回数据库）</b>
+            <textarea id="pp-note" class="pp-input" rows="2">${esc(d.note || "")}</textarea>
+            <div class="pp-sec"><b>摘要注记（覆盖显示，不改源摘要）</b>
+              <textarea id="pp-absov" class="pp-input" rows="2">${esc(d.abstract_override || "")}</textarea></div>
+            <button class="pp-btn pp-btn-primary" data-save>保存修订</button></div>`
+        : `<div class="pp-sec"><b>📝 笔记</b><div class="pp-meta">${esc(d.note || "（无笔记）")}</div></div>
+           <div class="pp-meta">启用「实时服务」后可在插件内编辑并写回数据库。</div>`}
+        <div class="pp-sec pp-meta">论文 #${pid} · DB 权威存储 · vault 内不建散文件</div>
+      </div>`;
+    ov.querySelector("[data-close]")?.addEventListener("click", () => ov.remove());
+    ov.addEventListener("click", (ev: MouseEvent) => { if (ev.target === ov) ov.remove(); });
+    const save = ov.querySelector("[data-save]");
+    save?.addEventListener("click", async () => {
+      if (!this.live) return;
+      await this.live.post(`/api/paper/${pid}/edit`, {
+        note: (ov.querySelector("#pp-note") as HTMLTextAreaElement)?.value ?? null,
+        abstract_override: (ov.querySelector("#pp-absov") as HTMLTextAreaElement)?.value ?? null,
+        by: this.user,
+      });
+      new Notice("论文修订已写回数据库");
+      ov.remove();
+    });
   }
 
-  renderDirList(ds: Direction[]) {
+  renderDirList(ds: any[]) {
     const box = this.el.querySelector("#pp-dirlist")!;
-    const named = ds.filter(d => d.name);
-    const unnamed = ds.filter(d => !d.name);
-    const item = (d: Direction) => `
-      <div class="pp-diritem" data-cid="${d.cluster_id}" data-label="${d.label}">
-        <span class="pp-dot" style="background:${PALETTE[d.label % PALETTE.length]}"></span>
+    const named = ds.filter((d: any) => d.name);
+    const unnamed = ds.filter((d: any) => !d.name);
+    const item = (d: any) => `
+      <div class="pp-diritem" data-cid="${d.cluster_id}">
+        <span class="pp-dot" style="background:${PALETTE[(d.label ?? d.cluster_id) % PALETTE.length]}"></span>
         <b>${dirName(d)}</b>
         ${d.name ? (d.snap_review === "approved" ? '<span class="pp-badge pp-b-approved">已审</span>'
           : d.snap_review === "rejected" ? '<span class="pp-badge pp-b-rejected">驳回</span>'
           : '<span class="pp-badge pp-b-pending">待审</span>') : ""}
-        <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${d.top_authors.slice(0, 3).map(t => esc(t.name)).join(" · ")}</span>
+        <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${(d.top_authors || []).slice(0, 3).map((x: any) => esc(x.name)).join(" · ")}</span>
       </div>`;
-    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击下钻）</span></div>` +
+    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击查看研究者）</span></div>` +
       (named.length ? named.map(item).join("") : "") +
       (unnamed.length ? `<details class="pp-unamed"><summary class="pp-meta">未命名方向（${unnamed.length}）</summary>${unnamed.map(item).join("")}</details>` : "");
-    box.querySelectorAll(".pp-diritem").forEach(el => el.addEventListener("click", () => {
-      const cid = +(el as HTMLElement).dataset.cid!;
-      const label = +(el as HTMLElement).dataset.label!;
-      this.highlightDir(label);
-      this.drillDown(cid, label);
+    box.querySelectorAll(".pp-diritem").forEach((el) => el.addEventListener("click", () => {
+      this.drillDown(+(el as HTMLElement).dataset.cid!);
     }));
   }
 
-  drawDirGraph() {
-    const el = this.el.querySelector("#pp-dirchart") as HTMLElement;
-    const chart = echarts.init(el);
-    this.charts.push(chart);
-    const ds = this.dirs!.directions;
-    const nodes = ds.map(d => ({
-      id: d.cluster_id, name: d.name || `方向#${d.label}`,
-      value: d.size,
-      symbolSize: 10 + Math.min(50, Math.sqrt(d.size) * 3.2),
-      itemStyle: { color: PALETTE[d.label % PALETTE.length],
-        shadowBlur: 14, shadowColor: "rgba(139,124,246,.35)" },
-      label: { show: d.size >= 40, fontSize: 11 },
-      _d: d,
-    }));
-    const links = (this.dirs!.links || []).map(l => ({
-      source: l.source, target: l.target, value: l.shared_papers,
-      lineStyle: { width: Math.min(5, 0.6 + Math.log2(1 + l.shared_papers)), opacity: 0.3, curveness: 0.12 },
-    }));
-    chart.setOption({
-      tooltip: { formatter: (p: any) => {
-        if (p.dataType === "node") {
-          const d = p.data._d as Direction;
-          return `<b>${esc(p.data.name)}</b><br>规模 ${d.size} 人 · 论文 ${d.papers} · 近三年 ${d.recent}<br>被引 ${d.citations}<br><span style="color:#8b83a0">${d.top_authors.slice(0, 3).map(t => esc(t.name)).join(" · ")}<br>点击查看该方向研究者</span>`;
-        }
-        return `共享论文 ${p.data.value} 篇`;
-      } },
-      series: [{
-        type: "graph", layout: "circular", circular: { rotateLabel: true },
-        data: nodes, links, roam: true, draggable: true,
-        emphasis: { focus: "adjacency", lineStyle: { opacity: 0.8 } },
-      }],
-    });
-    chart.on("click", (p: any) => {
-      if (p.dataType === "node") this.drillDown(p.data.id, (p.data._d as Direction).label);
-    });
-  }
-
-  highlightDir(label: number) {
-    const chart = this.charts[this.charts.length - 1];
-    if (!chart) return;
-    chart.dispatchAction({ type: "downplay" });
-    const idx = this.dirs!.directions.map((d, i) => d.label === label ? i : -1).filter(i => i >= 0);
-    chart.dispatchAction({ type: "highlight", seriesIndex: 0, dataIndex: idx });
-  }
-
-  /** 下钻：LiveProvider → 作者共著子图；VaultProvider → 该方向研究者视图（静态无共著边）。 */
-  async drillDown(cid: number, label: number) {
-    if (!this.provider.serverConnected()) {
-      this.showTab("researchers");
-      await this.renderResearchers(cid);
-      return;
-    }
-    this.drillCid = cid;
-    const box = this.el.querySelector("#pp-drill") as HTMLElement;
-    box.style.display = "";
-    box.innerHTML = `<div class="pp-card-title">下钻：${esc(dirName({ label }))} 的作者共著层
-      <button class="pp-btn pp-btn-ghost" id="pp-back">← 返回方向视图</button></div>
-      <div class="pp-chart" id="pp-drillchart" style="height:420px"></div>`;
-    (box.querySelector("#pp-back") as HTMLElement).addEventListener("click", () => {
-      box.style.display = "none";
-      this.drillCid = null;
-    });
-    const g = await this.live!.get("/api/graph?domain=" + this.domain);
-    const nodes = g.nodes.filter((n: any) => n.cluster === label).map((n: any) => ({
-      id: n.id, name: (n.zh ? n.zh + " " : "") + n.name, value: n.papers,
-      symbolSize: 6 + Math.min(30, Math.sqrt(n.papers) * 2),
-      itemStyle: {
-        color: n.l0 ? "#E57373" : (n.l1 ? "#F0A35E" : "#8B7CF6"),
-        borderColor: n.tier === "core" ? "#2E2840" : "#fff", borderWidth: n.tier === "core" ? 2 : 1,
-      },
-      label: { show: n.tier === "core" || n.l0 || n.l1, fontSize: 10 },
-      _n: n,
-    }));
-    const ids = new Set(nodes.map((n: any) => n.id));
-    const links = g.edges.filter((e: any) => ids.has(e.source) && ids.has(e.target)).map((e: any) => ({
-      source: e.source, target: e.target, value: e.weight,
-      lineStyle: { width: Math.min(5, 0.4 + Math.log2(1 + e.weight)), opacity: 0.35 },
-    }));
-    const chart = echarts.init(box.querySelector("#pp-drillchart") as HTMLElement);
-    this.charts.push(chart);
-    chart.setOption({
-      tooltip: { formatter: (p: any) => {
-        if (p.dataType === "node") {
-          const n = p.data._n;
-          return `<b>${esc(p.data.name)}</b> [${n.id}]<br>论文 ${n.papers} · 被引 ${n.citations}${n.l0 ? '<br><span style="color:#E57373">■ L0 确认造假</span>' : ""}${n.l1 ? '<br><span style="color:#F0A35E">● L1 风险提示</span>' : ""}<br><span style="color:#8b83a0">点击打开档案</span>`;
-        }
-        return `共著 ${p.data.value} 篇`;
-      } },
-      series: [{ type: "graph", layout: "force", data: nodes, links, roam: true, draggable: true,
-        force: { repulsion: 110, edgeLength: [30, 100], gravity: 0.08 },
-        emphasis: { focus: "adjacency" } }],
-    });
-    chart.on("click", (p: any) => { if (p.dataType === "node") this.openAuthor(p.data.id); });
+  /** 下钻：查看该方向研究者（信息化图谱区域点击 / 侧栏点击）。 */
+  async drillDown(cid: number) {
+    this.showTab("researchers");
+    await this.renderResearchers(cid);
   }
 
   // ---------- 方向·研究者 ----------
