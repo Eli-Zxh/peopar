@@ -43,6 +43,7 @@ export class AtlasApp {
   charts: echarts.ECharts[] = [];
   drillCid: number | null = null;
   private offData: (() => void) | null = null;
+  private offResize: (() => void) | null = null;
 
   constructor(plugin: PeoparPlugin, el: HTMLElement) {
     this.plugin = plugin;
@@ -94,6 +95,7 @@ export class AtlasApp {
     });
     this.setupSearch();
     this.offData = this.plugin.onDataChange(() => { if (this.domain) this.loadGraph(); });
+    this.offResize = this.plugin.onChartResize(() => this.charts.forEach(ch => ch.resize()));
     this.renderSync();
     await this.loadDomains(defaultDomain);
   }
@@ -102,6 +104,7 @@ export class AtlasApp {
     this.charts.forEach(ch => ch.dispose());
     this.charts = [];
     if (this.offData) this.offData();
+    if (this.offResize) this.offResize();
   }
 
   renderSync() {
@@ -166,95 +169,120 @@ export class AtlasApp {
     const byCluster = new Map<number, number>();
     g.directions.forEach((d: any, i: number) => byCluster.set(d.cluster_id, i));
     const dirColor = (cid: number) => PALETTE[(byCluster.get(cid) ?? 0) % PALETTE.length];
-    const dirmap = new Map<number, any>(g.directions.map((d: any) => [d.cluster_id, d]));
     const paperById = new Map<string, any>(g.papers.map((p: any) => [p.id, p]));
     const authById = new Map<string, any>(g.authors.map((a: any) => [a.id, a]));
-    // ---- 尺寸约束（相对画布） ----
     const maxR = Math.max(...g.directions.map((d: any) => Math.hypot(d.x, d.y) + d.r), 1);
-    const s = 330 / maxR;                       // 坐标→像素比例（区域直径 ≤ ~0.5 画布高）
-    const dirSize = (d: any) => Math.max(64, Math.min(230, d.r * 2 * s * 0.62));
-    const paperSize = (p: any) => Math.max(3.2, Math.min(7.5, 2.4 + (p.r - 5) * 0.16));
-    const authorSize = (a: any) => Math.max(10, Math.min(20, a.r * 0.9));
-    // ---- 区域（半透明包络圆，直径反映簇规模） ----
+    const base = 330 / maxR;
+    const baseDir = (d: any) => Math.max(64, Math.min(240, d.r * 2 * base * 0.62));
+    const basePaper = (p: any) => Math.max(3.6, Math.min(9, 2.4 + (p.r - 5) * 0.18));
+    const baseAuthor = (a: any) => Math.max(10, Math.min(20, a.r * 0.9));
+    let zoomF = 1;
     const dirNodes = g.directions.map((d: any) => ({
-      value: [d.x, d.y], symbolSize: dirSize(d), cluster_id: d.cluster_id, _d: d,
+      value: [d.x, d.y], cluster_id: d.cluster_id, _d: d,
       itemStyle: { color: dirColor(d.cluster_id), opacity: 0.13, borderColor: dirColor(d.cluster_id), borderWidth: 2 },
       label: { show: true, formatter: () => (d.name || "").slice(0, 20), fontSize: 11, fontWeight: 600,
-        color: "#4a4265", position: "top" },
+        color: "#3c3550", position: "top" },
     }));
-    // ---- 连线（三型） ----
-    const mkLine = (kind: string, style: any) => g.edges.filter((e: any) => e.kind === kind).map((e: any) => {
-      if (kind === "crossdir") { const sr: any = paperById.get(e.source);
-        return { coords: [[sr?.x ?? 0, sr?.y ?? 0], [e.target_x, e.target_y]] }; }
-      const s2 = paperById.get(e.source) ?? authById.get(e.source);
-      const t2 = paperById.get(e.target);
-      return s2 && t2 ? { coords: [[s2.x, s2.y], [t2.x, t2.y]] } : null;
-    }).filter(Boolean).map((c: any) => ({ ...c, lineStyle: { ...style, width: style.width } }));
-    const authored = mkLine("authored", { color: "#8f84c4", width: 0.9, opacity: 0.5 });
-    const cowrite = mkLine("cowrite", { color: "#cfc8e8", width: 0.6, opacity: 0.35 });
-    const crossdir = mkLine("crossdir", { color: "#c09a6a", width: 1.1, opacity: 0.7, type: "dashed" });
-    // ---- 论文（小散点，色深/亮度表达重要性） ----
     const paperNodes = g.papers.map((p: any) => ({
-      value: [p.x, p.y], symbolSize: paperSize(p), cluster_id: p.cluster_id, _p: p,
+      value: [p.x, p.y], cluster_id: p.cluster_id, _p: p,
       itemStyle: { color: dirColor(p.cluster_id),
-        opacity: p.affinity == null ? 0.35 : 0.5 + (p.affinity ?? 0) * 0.5,
+        opacity: p.affinity == null ? 0.4 : 0.55 + (p.affinity ?? 0) * 0.45,
         borderColor: "#fff", borderWidth: p.affinity != null ? 1 : 0 },
-      label: { show: (p.affinity ?? 0) >= 0.93 && p.title,
-        formatter: () => (p.title || "").slice(0, 14), fontSize: 8, color: "#8b83a0" },
+      label: { show: false, formatter: () => (p.title || "").slice(0, 16), fontSize: 9, color: "#555" },
     }));
     const authorNodes = g.authors.map((a: any) => ({
-      value: [a.x, a.y], symbolSize: authorSize(a), symbol: "diamond", cluster_id: a.cluster_id, _a: a,
-      itemStyle: { color: dirColor(a.cluster_id), opacity: 0.95, borderColor: "#fff", borderWidth: 1.5 },
-      label: { show: authorSize(a) >= 13, formatter: () => (a.name || "").slice(0, 9), fontSize: 9, color: "#4a4265" },
+      value: [a.x, a.y], symbol: "diamond", cluster_id: a.cluster_id, _a: a,
+      itemStyle: { color: dirColor(a.cluster_id), opacity: 0.96, borderColor: "#fff", borderWidth: 1.6 },
+      label: { show: true, formatter: () => (a.name || "").slice(0, 9), fontSize: 9.5, color: "#332c4a" },
     }));
+    const mkLine = (kind: string) => g.edges.filter((ed: any) => ed.kind === kind).map((ed: any) => {
+      if (kind === "crossdir") {
+        const sr: any = paperById.get(ed.source);
+        return { coords: [[sr?.x ?? 0, sr?.y ?? 0], [ed.target_x, ed.target_y]] };
+      }
+      const s2: any = paperById.get(ed.source) ?? authById.get(ed.source);
+      const t2: any = paperById.get(ed.target);
+      return s2 && t2 ? { coords: [[s2.x, s2.y], [t2.x, t2.y]] } : null;
+    }).filter(Boolean) as any[];
+    const authored = mkLine("authored");
+    const cowrite = mkLine("cowrite");
+    const crossdir = mkLine("crossdir");
+    const applyZoom = () => {
+      chart.setOption({
+        series: [
+          { symbolSize: (v: any, p: any) => baseDir(dirNodes[p.dataIndex]._d) * zoomF },
+          { lineStyle: { color: "#6f64b8", width: 1.1 * Math.min(zoomF, 2.6), opacity: 0.8 } },
+          { lineStyle: { color: "#a9a1cf", width: 0.9 * Math.min(zoomF, 2), opacity: 0.55 } },
+          { lineStyle: { color: "#c26060", width: 1.6 * Math.min(zoomF, 2.6), opacity: 0.95, type: "dashed" } },
+          { symbolSize: (v: any, p: any) => basePaper(paperNodes[p.dataIndex]._p) * Math.min(zoomF, 3.4),
+            label: { show: zoomF >= 1.8 } },
+          { symbolSize: (v: any, p: any) => baseAuthor(authorNodes[p.dataIndex]._a) * Math.min(zoomF, 2.5),
+            label: { fontSize: Math.min(14, 9.5 * zoomF) } },
+        ],
+      });
+    };
     let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
     g.directions.forEach((d: any) => {
       x0 = Math.min(x0, d.x - d.r); x1 = Math.max(x1, d.x + d.r);
       y0 = Math.min(y0, d.y - d.r); y1 = Math.max(y1, d.y + d.r);
     });
-    const pad = 90;
+    const pad = 110;
     chart.setOption({
-      dataZoom: [{ type: "inside", xAxisIndex: 0, yAxisIndex: 0, zoomLock: false }],
-      toolbox: { right: 6, top: 6, feature: {
-        dataZoom: { yAxisIndex: "none", title: { zoom: "缩放", back: "复位" } },
-        restore: { title: "还原" },
-      } },
-      tooltip: { formatter: (p: any) => {
-        if (p.seriesIndex === 5) {
+      tooltip: { confine: true, formatter: (p: any) => {
+        const si = p.seriesIndex;
+        if (si === 5) {
           const a = authorNodes[p.dataIndex]?._a;
           return `<b>${esc(a?.name ?? "")}</b>${a?.zh ? `（${esc(a.zh)}）` : ""}<br><span style="color:#8b83a0">研究者 · 点击打开档案</span>`;
         }
-        if (p.seriesIndex === 4) {
+        if (si === 4) {
           const pp = paperNodes[p.dataIndex]?._p;
-          const abs = (pp?.abstract || "").slice(0, 120);
+          const abs = (pp?.abstract || "").slice(0, 150);
           let h = `<b>${esc(pp?.title ?? "")}</b>`;
-          if (pp?.note) h += `<br><span style="color:#b96a00">📝 ${esc(pp.note.slice(0, 90))}</span>`;
-          if (abs) h += `<br><span style="color:#68727f">${esc(abs)}${abs.length >= 120 ? "…" : ""}</span>`;
-          h += `<br><span style="color:#8b83a0">被引 ${pp?.cite ?? 0}${pp?.affinity != null ? " · 关联 " + pp.affinity.toFixed(2) : ""} · 点击编辑/查看</span>`;
+          if (pp?.note) h += `<br><span style="color:#b96a00">📝 ${esc(pp.note.slice(0, 100))}</span>`;
+          if (abs) h += `<br><span style="color:#68727f">${esc(abs)}${abs.length >= 150 ? "…" : ""}</span>`;
+          h += `<br><span style="color:#8b83a0">被引 ${pp?.cite ?? 0}${pp?.affinity != null ? " · 关联 " + pp.affinity.toFixed(2) : ""} · 点击打开论文页</span>`;
           return h;
         }
-        if (p.seriesIndex === 0) {
+        if (si === 0) {
           const d = dirNodes[p.dataIndex]?._d;
-          return `<b>${esc(d?.name ?? "")}</b><br>规模 ${d?.size ?? ""}<br><span style="color:#8b83a0">点击查看该方向研究者</span>`;
+          return `<b>${esc(d?.name ?? "")}</b><br>规模 ${d?.size ?? ""}<br><span style="color:#8b83a0">点击打开方向笔记</span>`;
         }
         return "";
       } },
-      legend: { bottom: 0, textStyle: { fontSize: 10 }, selected: { "作者归属": true, "跨方向关联": true, "论文共著": false },
+      legend: { bottom: 0, textStyle: { fontSize: 10 },
+        selected: { "作者归属": true, "跨方向关联": true, "论文共著": false },
         data: ["作者归属", "跨方向关联", "论文共著"] },
+      toolbox: { right: 6, top: 6, feature: {
+        dataZoom: { yAxisIndex: "none", title: { zoom: "缩放", back: "复位" } },
+        restore: { title: "还原总览" } } },
       grid: { left: 8, right: 8, top: 8, bottom: 26 },
       xAxis: { type: "value", min: x0 - pad, max: x1 + pad, axisLine: { show: false },
         axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
       yAxis: { type: "value", min: y0 - pad, max: y1 + pad, axisLine: { show: false },
         axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
       series: [
-        { name: "方向区域", type: "scatter", data: dirNodes, z: 1, roam: true, scaleLimit: { min: 0.3, max: 8 } },
-        { name: "作者归属", type: "lines", data: authored, z: 2, silent: true },
-        { name: "论文共著", type: "lines", data: cowrite, z: 2, silent: true },
-        { name: "跨方向关联", type: "lines", data: crossdir, z: 2, silent: true },
-        { name: "论文", type: "scatter", data: paperNodes, z: 3, roam: true },
-        { name: "研究者", type: "scatter", data: authorNodes, z: 4, roam: true },
+        { name: "方向区域", type: "scatter", data: dirNodes, z: 1, roam: true, scaleLimit: { min: 0.4, max: 10 },
+          symbolSize: (v: any, p: any) => baseDir(dirNodes[p.dataIndex]._d) },
+        { name: "作者归属", type: "lines", data: authored, z: 3, silent: true,
+          lineStyle: { color: "#6f64b8", width: 1.1, opacity: 0.8 } },
+        { name: "论文共著", type: "lines", data: cowrite, z: 3, silent: true,
+          lineStyle: { color: "#a9a1cf", width: 0.9, opacity: 0.55 } },
+        { name: "跨方向关联", type: "lines", data: crossdir, z: 3, silent: true,
+          lineStyle: { color: "#c26060", width: 1.6, opacity: 0.95, type: "dashed" } },
+        { name: "论文", type: "scatter", data: paperNodes, z: 4, roam: true,
+          symbolSize: (v: any, p: any) => basePaper(paperNodes[p.dataIndex]._p) },
+        { name: "研究者", type: "scatter", data: authorNodes, z: 5, roam: true,
+          symbolSize: (v: any, p: any) => baseAuthor(authorNodes[p.dataIndex]._a) },
       ],
     });
+    chart.on("datazoom", (ev: any) => {
+      const xa = (chart.getOption().xAxis as any[])[0];
+      const cur = (xa.max - xa.min);
+      const init = (x1 + pad) - (x0 - pad);
+      zoomF = Math.max(0.6, Math.min(12, init / cur));
+      applyZoom();
+    });
+    chart.on("dblclick", () => { zoomF = 1; applyZoom(); });
     chart.on("click", (p: any) => {
       if (p.seriesIndex === 5) {
         const a = authorNodes[p.dataIndex]?._a;
@@ -265,8 +293,16 @@ export class AtlasApp {
         if (pid) this.openPaper(pid, pp);
       } else if (p.seriesIndex === 0) {
         const d = dirNodes[p.dataIndex]?._d;
-        if (d) this.drillDown(d.cluster_id);
+        if (d) this.openDirection(d.cluster_id);
       }
+    });
+    const fsBtn = this.el.querySelector("section[data-sec='graph'] .pp-grow .pp-chartbox")?.createEl("button", {
+      cls: "pp-btn pp-btn-ghost pp-btn-sm", attr: { title: "最大化图谱" }, text: "⛶ 放大" });
+    fsBtn?.addEventListener("click", () => {
+      const host = this.el.querySelector('section[data-sec="graph"]') as HTMLElement;
+      host.classList.toggle("pp-fullscreen");
+      fsBtn.textContent = host.classList.contains("pp-fullscreen") ? "✕ 还原" : "⛶ 放大";
+      setTimeout(() => chart.resize(), 80);
     });
   }
 

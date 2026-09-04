@@ -50,6 +50,8 @@ export default class PeoparPlugin extends Plugin {
     }});
     this.addSettingTab(new PeoparSettingTab(this.app, this));
 
+    // Obsidian 布局尺寸变化（侧栏/窗口）→ 视图图表真重绘
+    this.registerEvent(this.app.workspace.on("resize", () => this.notifyChartResize()));
     // vault 文件监听：peopar/ 目录变化（skill/agent 重新导出）→ 通知所有打开的视图刷新
     this.registerEvent(this.app.vault.on("modify", (f) => this.onVaultChange(f)));
     this.registerEvent(this.app.vault.on("create", (f) => this.onVaultChange(f)));
@@ -65,6 +67,13 @@ export default class PeoparPlugin extends Plugin {
   onunload() {
     if (this.settings.killServerOnUnload && this.serverPid) this.stopServer();
   }
+
+  private chartResize: (() => void)[] = [];
+  onChartResize(fn: () => void): () => void {
+    this.chartResize.push(fn);
+    return () => { this.chartResize = this.chartResize.filter(x => x !== fn); };
+  }
+  private notifyChartResize() { this.chartResize.forEach(fn => { try { fn(); } catch {} }); }
 
   /** 视图注册数据变化回调，返回注销函数 */
   onDataChange(fn: () => void): () => void {

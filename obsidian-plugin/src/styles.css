@@ -176,3 +176,9 @@
 .pp-paper-panel textarea{width:100%;min-height:52px;margin:4px 0;border:none;outline:none;
   border-radius:10px;padding:7px 10px;font-family:inherit;font-size:13px;background:var(--p-surface);color:var(--p-ink);
   box-shadow:inset 3px 3px 7px var(--p-sd),inset -3px -3px 7px var(--p-sl)}
+
+/* 图谱最大化 */
+.pp-fullscreen{position:fixed !important;inset:0;z-index:150;margin:0;padding:18px;
+  background:var(--p-bg);overflow:auto}
+.pp-fullscreen .pp-row{height:calc(100vh - 120px)}
+.pp-fullscreen #pp-dirchart{height:100% !important}
