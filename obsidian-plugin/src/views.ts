@@ -64,7 +64,7 @@ export class AtlasApp {
         <div class="pp-qres" style="display:none"></div></div>
       <nav class="pp-nav">
         <button data-tab="graph" class="on">方向图谱</button>
-        <button data-tab="researchers">方向·研究者</button>
+        <button data-tab="directions">研究方向</button>
         <button data-tab="trends">热点时间线</button>
         <button data-tab="author">研究者档案</button>
         <button data-tab="events">造假事件</button>
@@ -80,7 +80,8 @@ export class AtlasApp {
         </div>
         <div class="pp-drill" id="pp-drill" style="display:none"></div>
       </section>
-      <section data-sec="researchers" style="display:none"></section>
+      <section data-sec="directions" style="display:none"></section>
+      <section data-sec="researchers2" style="display:none"></section>
       <section data-sec="trends" style="display:none"></section>
       <section data-sec="author" style="display:none"></section>
       <section data-sec="events" style="display:none"></section>
@@ -120,7 +121,7 @@ export class AtlasApp {
       b.classList.toggle("on", (b as HTMLElement).dataset.tab === tab));
     this.el.querySelectorAll("main section[data-sec]").forEach(s =>
       (s as HTMLElement).style.display = (s as HTMLElement).dataset.sec === tab ? "" : "none");
-    if (tab === "researchers") this.loadResearchers();
+    if (tab === "directions") this.loadDirections();
     if (tab === "trends") this.loadTrends();
     if (tab === "events") this.loadEvents();
     if (tab === "graph") setTimeout(() => this.charts.forEach(ch => ch.resize()), 60);
@@ -345,48 +346,86 @@ export class AtlasApp {
     await MarkdownRenderer.render(this.plugin.app, mdText, into, "", cm);
   }
 
-  /** 方向笔记面板：渲染 vault 方向 md + 编辑入口 */
+  /** 方向笔记视图（在「研究方向」页签内渲染方向 md；含编辑/查看研究者入口） */
   async openDirection(cid: number) {
-    const dirs = this.dirs?.directions ?? [];
-    const d = dirs.find((x: any) => x.cluster_id === cid);
-    const overlay = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
-    const card = overlay.createEl("div", { cls: "pp-card pp-paper-panel" });
-    const title = d?.name || `方向 #${cid}`;
-    card.innerHTML = `<div class="pp-panel-head"><b>研究方向 · 笔记</b>
-      <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
-      <div class="pp-meta" style="margin-bottom:6px">
-        <button class="pp-btn pp-btn-sm pp-btn-primary" data-edit>✎ 编辑方向笔记（Obsidian）</button>
-        <button class="pp-btn pp-btn-sm pp-btn-ghost" data-persons>查看该方向研究者</button></div>`;
-    const body = card.createDiv();
-    const f = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/directions/direction-${cid}.md`));
+    this.showTab("directions");
+    const sec = this.el.querySelector('section[data-sec="directions"]') as HTMLElement;
+    sec.innerHTML = '<div class="pp-muted">加载方向笔记…</div>';
+    const d = this.dirs?.directions.find((x: any) => x.cluster_id === cid);
+    const dirsBtn = `<div style="margin:6px 0">
+      <button class="pp-btn pp-btn-sm pp-btn-primary" data-edit-note>✎ 编辑方向笔记（Obsidian）</button>
+      <button class="pp-btn pp-btn-sm pp-btn-ghost" data-back-dirs>← 方向列表</button>
+      <button class="pp-btn pp-btn-sm pp-btn-ghost" data-persons>查看该方向研究者</button></div>`;
+    const f = this.plugin.app.vault.getFiles().find((x) => x.path.endsWith(`/directions/direction-${cid}.md`));
+    let mdText = "";
     if (f) {
-      const mdText = await this.plugin.app.vault.adapter.read(f.path);
-      await this.renderMarkdown(mdText, body);
+      mdText = await this.plugin.app.vault.adapter.read(f.path);
     } else if (d) {
-      body.innerHTML = `<h3>${esc(title)}</h3><div class="pp-meta">规模 ${d.size} · 论文 ${d.papers} ·
-        未导出笔记（运行 export_vault 后生成）</div>`;
+      mdText = `# ${d.name || ("方向 #" + cid)}\n\n> 规模 ${d.size} · 论文 ${d.papers}（笔记待 export_vault 生成）`;
     }
-    overlay.querySelector("[data-close]")?.addEventListener("click", () => overlay.remove());
-    overlay.querySelector("[data-edit]")?.addEventListener("click", async () => {
-      const fm = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/directions/direction-${cid}.md`));
-      if (fm) {
+    sec.innerHTML = `<div class="pp-card">${dirsBtn}<div class="pp-dirnote"></div></div>`;
+    const body = sec.querySelector(".pp-dirnote") as HTMLElement;
+    const cm = new Component();
+    await MarkdownRenderer.render(this.plugin.app, mdText, body, "", cm);
+    body.querySelectorAll("a.internal-link").forEach((a) => a.addEventListener("click", (ev) => ev.stopPropagation()));
+    sec.querySelector("[data-back-dirs]")?.addEventListener("click", () => this.loadDirections());
+    sec.querySelector("[data-persons]")?.addEventListener("click", () => {
+      this.showTab("researchers2");
+      sec.parentElement?.querySelectorAll('section').forEach((x: any) => {});
+      this.renderResearchersGrid(cid);
+    });
+    sec.querySelector("[data-edit-note]")?.addEventListener("click", async () => {
+      if (f) {
         const leaf = this.plugin.app.workspace.getLeaf(true);
-        await leaf.openFile(fm);
-        await leaf.setViewState({ type: "markdown", state: { file: fm.path, mode: "source" }, active: true });
-      } else {
-        new Notice("该方向笔记未在 vault（先运行 export_vault）");
-      }
-      overlay.remove();
+        await leaf.openFile(f);
+        await leaf.setViewState({ type: "markdown", state: { file: f.path, mode: "source" }, active: true });
+      } else new Notice("方向笔记未在 vault（先运行 export_vault）");
     });
-    overlay.querySelector("[data-persons]")?.addEventListener("click", () => {
-      overlay.remove();
-      this.showTab("researchers");
-      this.renderResearchers(cid);
-    });
-    overlay.addEventListener("click", (ev: MouseEvent) => { if (ev.target === overlay) overlay.remove(); });
   }
 
-  // ---------- 方向·研究者 ----------
+  /** 该方向研究者（图谱内点击"查看研究者"与方向页次要入口） */
+  async renderResearchersGrid(cid: number) {
+    this.showTab("researchers2");
+    const sec = this.el.querySelector('section[data-sec="researchers2"]') as HTMLElement;
+    if (!sec) { await this.renderResearchers(cid); return; }
+    const d = await this.provider.directionResearchers(cid);
+    const card = (r: any) => `
+      <div class="pp-card pp-r-card" data-aid="${esc(r.id)}">
+        <div class="pp-r-name">${esc(r.name)} ${r.zh ? `<span class="pp-meta">（${esc(r.zh)}）</span>` : ""}
+          ${r.tier === "core" ? '<span class="pp-badge pp-b-core">核心</span>' : ""}</div>
+        ${r.institution ? `<div class="pp-meta">🏛 ${esc(r.institution.institution)}</div>` : ""}
+        ${r.snapshot ? `<div class="pp-r-focus">🎯 ${esc(r.snapshot.focus || "")}</div>` : ""}
+        <div class="pp-r-foot"><span class="pp-meta">论文 ${r.papers}</span>
+          <button class="pp-btn pp-btn-ghost pp-btn-sm" data-open="${esc(r.id)}">档案</button></div>
+      </div>`;
+    sec.innerHTML = `<div class="pp-card pp-card-title">该方向研究者（${d.researchers.length}）
+      <button class="pp-btn pp-btn-sm pp-btn-ghost" data-back2>← 返回方向</button></div>
+      <div class="pp-res-grid">${d.researchers.map(card).join("")}</div>`;
+    sec.querySelectorAll("[data-open]").forEach((b) => b.addEventListener("click", () =>
+      this.openAuthor((b as HTMLElement).dataset.open!)));
+    sec.querySelectorAll(".pp-r-card").forEach((c) => c.addEventListener("click", (ev) => {
+      if ((ev.target as HTMLElement).closest("a,button")) return;
+      this.openAuthor((c as HTMLElement).dataset.aid!);
+    }));
+    const b2 = sec.querySelector("[data-back2]");
+    b2?.addEventListener("click", () => this.openDirection(cid));
+  }
+
+
+  async loadDirections() {
+    const sec = this.el.querySelector('section[data-sec="directions"]') as HTMLElement;
+    if (!this.dirs) { sec.innerHTML = '<div class="pp-card pp-muted">请先在「方向图谱」加载</div>'; return; }
+    const list = this.dirs.directions.filter((d: any) => d.display !== "excluded")
+      .map((d: any) => `<div class="pp-card pp-r-card" data-dir="${d.cluster_id}">
+        <div class="pp-r-name"><span class="pp-dot" style="background:${PALETTE[(d.label ?? d.cluster_id) % PALETTE.length]}"></span>${dirName(d)}
+          ${d.name ? statusBadge(d.snap_review || "pending") : ""}</div>
+        <div class="pp-meta">规模 <b>${d.size}</b> 人 · 论文 ${d.papers} · 近三年 ${d.recent}</div></div>`).join("");
+    sec.innerHTML = `<div class="pp-card pp-card-title">研究方向（点击打开该方向笔记与叙述）</div>
+      <div class="pp-res-grid">${list || '<div class="pp-meta">暂无</div>'}</div>`;
+    sec.querySelectorAll("[data-dir]").forEach((b) => b.addEventListener("click", () =>
+      this.openDirection(+(b as HTMLElement).dataset.dir!)));
+  }
+
   async loadResearchers() {
     const sec = this.el.querySelector('section[data-sec="researchers"]') as HTMLElement;
     if (!this.dirs) { sec.innerHTML = '<div class="pp-card pp-muted">请先在「方向图谱」加载</div>'; return; }

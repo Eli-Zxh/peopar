@@ -251,8 +251,25 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
                 rep_items.append(item)
             if rep_items:
                 body += "- 代表作：" + "；".join(rep_items) + "\n"
+        # 论文清单（vault 可见，避免仅 DB 感知丢失）
+        pa_rows = conn.execute(
+            """SELECT p.title, p.year, p.cited_by_count, p.pmid FROM paper_authors pa
+               JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
+               JOIN papers p ON p.id=pa.paper_id WHERE pa.author_id=?
+               ORDER BY p.cited_by_count DESC LIMIT 60""", (domain, aid)).fetchall()
+        if pa_rows:
+            body += "## 论文（" + str(npapers) + "）\n\n"
+            for i, pp in enumerate(pa_rows[:40]):
+                line = f"{i + 1}. {pp['title']}（{pp['year'] or '?'} · 被引 {pp['cited_by_count'] or 0}）"
+                if pp["pmid"]:
+                    line += f" [PubMed](https://pubmed.ncbi.nlm.nih.gov/{pp['pmid']}/)"
+                body += line + "\n"
+            if len(pa_rows) > 40:
+                body += f"…（其余 {npapers - 40} 篇见数据库/图谱）\n"
+            body += "\n"
         if flags:
             body += f"\n⚠️ 标记：{','.join(flags)}（详见事件笔记）\n"
+
         elif content.get("risks") and review == "approved":
             body += f"\n⚠️ {content['risks']}\n"
         md_file(rdir, slug_researcher(aid) + ".md", front, body)
@@ -320,32 +337,46 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
             "years": dict(sorted(years.items())), "linked": linked,
             "top_authors": top,
         }
+        def arrow_timeline(txt: str) -> str:
+            out = []
+            for sent in re.split(r"(?<=[。；;\n])", txt or ""):
+                sent = sent.strip()
+                if not sent:
+                    continue
+                m = re.search(r"((?:19|20)\d{2})", sent)
+                out.append(("▸ **" + m.group(1) + "** → " + sent) if m else ("▸ " + sent))
+            return "\n".join(out)
         body = f"# {name}\n\n"
         body += f"> [!summary] 方向概览\n> 规模 **{size}** 人 · 论文 **{st['n'] or 0}** · 近三年 **{st['recent'] or 0}** · 被引 **{st['cit'] or 0}**" + \
                 (f" · 审阅：{review}" if review else "") + "\n\n"
-        narr = ""
-        if content.get("definition"):
-            narr += f"## 研究概述\n\n{content['definition']}\n\n"
+        if content.get("name") or name:
+            pass
         if content.get("current_conclusions"):
-            narr += f"## 当前结论\n\n{content['current_conclusions']}\n\n"
+            body += "## 🎯 当前结论\n\n> **" + content["current_conclusions"] + "**\n\n"
         if content.get("timeline"):
-            narr += f"## 历史进程\n\n{content['timeline']}\n\n"
+            body += "## 📜 历史进程\n\n" + arrow_timeline(content["timeline"]) + "\n\n"
+        if content.get("definition"):
+            body += "## 📖 研究概述\n\n" + content["definition"] + "\n\n"
         if content.get("controversies"):
-            narr += f"## 分歧与风险\n\n{content['controversies']}\n\n"
-        if narr:
-            body += "<details>\n<summary>📖 方向叙述（LLM 合成，待审）</summary>\n\n" + narr + "</details>\n\n"
+            body += "## ⚖️ 分歧与风险\n\n" + content["controversies"] + "\n\n"
         if members:
-            body += "## 代表研究者\n\n" + "、".join(f"[[{aid}]]" for aid, _ in members) + "\n\n"
+            body += "## 代表研究者\n\n"
+            for aid, nm in members[:20]:
+                body += f"- [[{aid}|{nm}]]\n"
+            body += "\n"
         if reps:
             body += "## 代表论文\n\n"
             for pid in reps:
-                pf = conn.execute("SELECT pmid, title, year FROM papers WHERE id=?", (pid,)).fetchone()
+                pf = conn.execute("SELECT pmid, title, year, abstract FROM papers WHERE id=?", (pid,)).fetchone()
                 if not pf:
                     continue
-                line = f"- {pf['title']}（{pf['year'] or '?'}）"
+                body += f"- **{pf['title']}**（{pf['year'] or '?'}）"
+                ab = (pf["abstract"] or "").strip()
+                if ab:
+                    body += " — " + ab[:110] + ("…" if len(ab) > 110 else "")
                 if pf["pmid"]:
-                    line += f" [PubMed](https://pubmed.ncbi.nlm.nih.gov/{pf['pmid']}/)"
-                body += line + "\n"
+                    body += f" [PubMed](https://pubmed.ncbi.nlm.nih.gov/{pf['pmid']}/)"
+                body += "\n"
         md_file(ddir, slug_direction(cid) + ".md", front, body)
         dir_meta[cid] = {"name": name, "file": slug_direction(cid)}
         n_dir += 1
