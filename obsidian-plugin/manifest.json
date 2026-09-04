@@ -1,7 +1,7 @@
 {
   "id": "peopar",
   "name": "百官行述 · 研究者图谱",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "minAppVersion": "1.4.0",
   "description": "以研究者为中心的学术图谱：研究方向聚合图、方向→研究者清单、热点时间线、造假标记闭环。视图渲染在本仓库内，数据来自本地 peopar 服务（127.0.0.1:8765）。",
   "author": "zhangxinhao",
