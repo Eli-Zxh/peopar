@@ -319,3 +319,73 @@ CREATE TABLE IF NOT EXISTS webvpn_imports (
     imported_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS ix_webvpn_domain ON webvpn_imports(domain_id);
+
+-- ============ 第三版增量（2026-08-31：可视化布局/编辑机制/标签体系） ============
+
+-- LLM 布局评分（待审）：方向两两关联 / 论文×方向关联（距离语义的唯一来源）
+CREATE TABLE IF NOT EXISTS layout_scores (
+    id          INTEGER PRIMARY KEY,
+    domain_id   TEXT NOT NULL REFERENCES domains(id),
+    score_type  TEXT NOT NULL CHECK (score_type IN ('dir_sim','paper_aff')),
+    from_id     TEXT NOT NULL,              -- dir_sim: 方向A id；paper_aff: paper_id
+    to_id       TEXT NOT NULL,              -- dir_sim: 方向B id；paper_aff: 方向 id
+    value       REAL NOT NULL CHECK (value >= 0 AND value <= 1),
+    reason      TEXT,                       -- 锚定理由（必须提及证据）
+    model       TEXT,
+    prompt_ver  TEXT,
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','approved','rejected')),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE (domain_id, score_type, from_id, to_id)
+);
+
+-- 布局坐标（确定性求解产物；每批次可复现）
+CREATE TABLE IF NOT EXISTS node_layout (
+    domain_id   TEXT NOT NULL REFERENCES domains(id),
+    batch_id    TEXT NOT NULL,              -- layout-<date>-<seed>
+    type        TEXT NOT NULL CHECK (type IN ('direction','paper','author')),
+    id          TEXT NOT NULL,              -- direction:<cid> / paper:<id> / author:BG…
+    x           REAL NOT NULL, y REAL NOT NULL, r REAL NOT NULL,
+    cluster_id  INTEGER,                    -- paper/author 所属方向
+    main_dir    INTEGER,                    -- paper 主方向
+    affinity    REAL,                       -- 主方向关联度 a
+    PRIMARY KEY (domain_id, batch_id, type, id)
+);
+
+-- 标签词表（受控，新词经人工裁决入表）
+CREATE TABLE IF NOT EXISTS tag_vocab (
+    id          INTEGER PRIMARY KEY,
+    dim         TEXT NOT NULL CHECK (dim IN ('domain_area','sub_direction','method','object')),
+    tag         TEXT NOT NULL UNIQUE,
+    status      TEXT NOT NULL DEFAULT 'approved' CHECK (status IN ('approved','proposed','rejected')),
+    proposed_by TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- 研究者标签（深描 skill 产出，待审）
+CREATE TABLE IF NOT EXISTS researcher_tags (
+    author_id   TEXT NOT NULL REFERENCES authors(id),
+    tag_id      INTEGER NOT NULL REFERENCES tag_vocab(id),
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','approved','rejected')),
+    source      TEXT NOT NULL DEFAULT 'deepdive',
+    basis       TEXT,                       -- 锚定（机构页 URL/论文）
+    created_by  TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    PRIMARY KEY (author_id, tag_id)
+);
+
+-- 结构化变更请求队列（论文列表/归属等硬结构的人工变更途径）
+CREATE TABLE IF NOT EXISTS change_requests (
+    id          INTEGER PRIMARY KEY,
+    req_type    TEXT NOT NULL CHECK (req_type IN
+                 ('add_paper','remove_paper','flag_correction','direction_note','other')),
+    entity_type TEXT NOT NULL,              -- author | paper | direction
+    entity_id   TEXT NOT NULL,
+    payload     TEXT NOT NULL,              -- JSON：变更描述 + 依据 + 锚定
+    status      TEXT NOT NULL DEFAULT 'pending'
+                CHECK (status IN ('pending','accepted','rejected')),
+    decided_by  TEXT, decided_at TEXT, decision_note TEXT,
+    created_by  TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);

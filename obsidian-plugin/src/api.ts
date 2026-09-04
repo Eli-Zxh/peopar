@@ -72,6 +72,7 @@ export interface DataProvider {
   domains(): Promise<Domain[]>;
   directions(domain: string): Promise<DirectionsResp>;
   trends(domain: string): Promise<TrendsResp>;
+  layout(domain: string): Promise<LayoutData>;
   directionResearchers(cid: number): Promise<DirectionResp>;
   author(id: string): Promise<AuthorDetail>;
   authorSnapshot(id: string): Promise<AuthorSnapshotResp | null>;
@@ -80,4 +81,15 @@ export interface DataProvider {
   search(q: string): Promise<any>;
   /** 仅 LiveProvider 支持（写操作/管理台）；静态模式返回 false */
   writeSupported(): boolean;
+}
+
+/** 信息化方向图谱布局数据（analyze/layout.py 产物；宏观区域 + 论文/作者散点 + 连线） */
+export interface LayoutNode { id: string; x: number; y: number; r: number; cluster_id: number; affinity: number | null; }
+export interface LayoutDir extends LayoutNode { name: string | null; size: number; }
+export interface LayoutPaper extends LayoutNode { paper_id?: number; title?: string; cite?: number; }
+export interface LayoutAuthor extends LayoutNode { name?: string; zh?: string; }
+export interface LayoutData {
+  domain: string; batch: string;
+  directions: LayoutDir[]; papers: LayoutPaper[]; authors: LayoutAuthor[];
+  edges: { source: string; target: string; kind: string }[];
 }

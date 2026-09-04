@@ -3,7 +3,7 @@
 import { App, TFile } from "obsidian";
 import {
   DataProvider, Domain, DirectionsResp, TrendsResp, DirectionResp, Researcher,
-  AuthorDetail, AuthorSnapshotResp, FraudEvent, FraudEventDetail, Inst,
+  AuthorDetail, AuthorSnapshotResp, FraudEvent, FraudEventDetail, Inst, LayoutData,
 } from "./api";
 
 export class VaultProvider implements DataProvider {
@@ -102,6 +102,13 @@ export class VaultProvider implements DataProvider {
     }
     series.sort((a, b) => b.recent - a.recent);
     return { domain, series: series.slice(0, 20) };
+  }
+
+  async layout(domain: string): Promise<LayoutData> {
+    const f = this.file(`${this.P}/_layout/${domain}.json`);
+    if (!f) throw new Error("无布局快照（先运行 analyze/layout.py 并 export_vault）");
+    const raw = await this.app.vault.adapter.read(f.path);
+    return JSON.parse(raw);
   }
 
   async directionResearchers(cid: number): Promise<DirectionResp> {

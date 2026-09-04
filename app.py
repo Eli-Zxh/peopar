@@ -229,6 +229,56 @@ class API:
                 "display": c["display"], "domain": c["domain_id"], "researchers": researchers}
 
     @staticmethod
+    def layout(conn, domain):
+        """最新布局批次：方向/论文/作者坐标（信息化方向图谱数据源）。"""
+        batch = conn.execute(
+            "SELECT MAX(batch_id) b FROM node_layout WHERE domain_id=?", (domain,)).fetchone()["b"]
+        if not batch:
+            return {"error": f"无布局：请先运行 python3 analyze/layout.py {domain}"}
+        rows = conn.execute(
+            "SELECT * FROM node_layout WHERE domain_id=? AND batch_id=? ORDER BY type", (domain, batch))
+        out = {"domain": domain, "batch": batch, "directions": [], "papers": [], "authors": [], "edges": []}
+        dir_idx = {}
+        for r in rows:
+            rec = {"id": r["id"], "x": r["x"], "y": r["y"], "r": r["r"],
+                   "cluster_id": r["cluster_id"], "affinity": r["affinity"]}
+            if r["type"] == "direction":
+                c = conn.execute("SELECT name FROM clusters WHERE id=?", (r["cluster_id"],)).fetchone()
+                size = conn.execute("SELECT COUNT(*) n FROM author_clusters WHERE cluster_id=?",
+                                    (r["cluster_id"],)).fetchone()["n"]
+                rec["name"] = c["name"] if c else None
+                rec["size"] = size
+                dir_idx[r["cluster_id"]] = len(out["directions"])
+                out["directions"].append(rec)
+            elif r["type"] == "paper":
+                p = conn.execute(
+                    "SELECT title, cited_by_count FROM papers WHERE id=?", (r["id"][2:],)).fetchone()
+                if p:
+                    rec["title"] = p["title"]
+                    rec["cite"] = p["cited_by_count"]
+                    out["papers"].append(rec)
+            else:
+                a = conn.execute("SELECT name_display, name_zh FROM authors WHERE id=?", (r["id"],)).fetchone()
+                if a:
+                    rec["name"] = a["name_display"]
+                    rec["zh"] = a["name_zh"]
+                    out["authors"].append(rec)
+        # 作者→论文边（从布局批次的论文，按 paper_authors 现算：作者与同方向论文）
+        auth = {a["id"]: a for a in out["authors"]}
+        for aid, arec in auth.items():
+            n = 0
+            for p in out["papers"]:
+                if p.get("cluster_id") != arec.get("cluster_id") or n >= 3:
+                    continue
+                hit = conn.execute(
+                    "SELECT 1 FROM paper_authors WHERE author_id=? AND paper_id=? LIMIT 1",
+                    (aid, p["id"][2:])).fetchone()
+                if hit:
+                    out["edges"].append({"source": aid, "target": p["id"], "kind": "authored"})
+                    n += 1
+        return out
+
+    @staticmethod
     def trends(conn, domain):
         """热点时间演化：方向×年份论文分布 + 近三年活跃榜（主要方向 top 40）。"""
         clusters = API.latest_clusters(conn, domain, limit=40)
@@ -703,6 +753,8 @@ class Handler(BaseHTTPRequestHandler):
                     self._json(API.health())
                 elif path == "/api/directions":
                     self._json(API.directions(conn, qs.get("domain", [""])[0]))
+                elif path == "/api/layout":
+                    self._json(API.layout(conn, qs.get("domain", [""])[0]))
                 elif path == "/api/trends":
                     self._json(API.trends(conn, qs.get("domain", [""])[0]))
                 elif path == "/api/judgments":

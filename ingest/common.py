@@ -63,6 +63,10 @@ def init_db(conn: sqlite3.Connection):
     idx = {r[1] for r in conn.execute("PRAGMA index_list(author_clusters)")}
     if "ix_ac_cluster" not in idx:
         conn.execute("CREATE INDEX IF NOT EXISTS ix_ac_cluster ON author_clusters(cluster_id)")
+    # 轻量迁移：论文人工注记列
+    pcols = {r[1] for r in conn.execute("PRAGMA table_info(papers)")}
+    if "note" not in pcols:
+        conn.execute("ALTER TABLE papers ADD COLUMN note TEXT")
     # 轻量迁移：机构官网抓取信息（note / verified）
     acols = {r[1] for r in conn.execute("PRAGMA table_info(affiliations)")}
     if "note" not in acols:

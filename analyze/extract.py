@@ -86,11 +86,17 @@ def export_pack(domain_id, min_size=3, max_papers=60, top=30):
                     pass
         rule_hist = Counter(r["rule"] for r in papers)
         snap = conn.execute(
-            """SELECT id, review_status FROM snapshots WHERE cluster_id=?
+            """SELECT id, review_status, content FROM snapshots WHERE cluster_id=?
                ORDER BY id DESC LIMIT 1""", (cid,)).fetchone()
+        snap_out = dict(snap) if snap else None
+        if snap_out and snap_out.get("content"):
+            try:
+                snap_out["content"] = json.loads(snap_out["content"])
+            except json.JSONDecodeError:
+                snap_out["content"] = {"raw": snap_out["content"]}
         out_clusters.append({
             "cluster_id": cid, "label": c["label"], "name": c["name"], "size": csize,
-            "existing_snapshot": dict(snap) if snap else None,
+            "existing_snapshot": snap_out,
             "top_authors": [{"id": a["id"], "name": a["name_display"],
                              "tier": a["tier"], "papers": a["n"]} for a in authors],
             "paper_count": len(cp),

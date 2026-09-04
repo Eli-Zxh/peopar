@@ -149,9 +149,107 @@ export class AtlasApp {
       <span class="pp-stat"><b>${ds.filter(d => d.name).length}</b> 已命名</span>
       <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.size, 0)}</b> 研究者</span>
       <span class="pp-stat"><b>${ds.reduce((s, d) => s + d.recent, 0)}</b> 近三年论文</span>
-      <span class="pp-hint">节点=研究方向 · 大小=规模 · 点击下钻</span>`;
+      <span class="pp-hint">区域=研究方向 · 论文散点（越大越重要、越靠中心越代表该方向）· ◇=研究者 · 点击下钻</span>`;
     this.renderDirList(ds);
-    this.drawDirGraph();
+    const layout = await this.provider.layout(this.domain).catch(() => null);
+    if (layout && layout.directions?.length) {
+      this.drawInfoGraph(layout);
+    } else {
+      this.drawDirGraph();
+    }
+  }
+
+  /** 信息化方向图谱：方向区域 + 论文/研究者散点 + 作者连线（关联距离预计算布局） */
+  drawInfoGraph(g: any) {
+    const el = this.el.querySelector("#pp-dirchart") as HTMLElement;
+    const chart = echarts.init(el);
+    this.charts.push(chart);
+    const byCluster = new Map<number, number>();
+    g.directions.forEach((d: any, i: number) => byCluster.set(d.cluster_id, i));
+    const dirColor = (cid: number) => PALETTE[(byCluster.get(cid) ?? 0) % PALETTE.length];
+    const paperMap = new Map(g.papers.map((p: any) => [p.id, p]));
+    let x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+    g.directions.forEach((d: any) => {
+      x0 = Math.min(x0, d.x - d.r); x1 = Math.max(x1, d.x + d.r);
+      y0 = Math.min(y0, d.y - d.r); y1 = Math.max(y1, d.y + d.r);
+    });
+    const pad = 100;
+    const dirNodes = g.directions.map((d: any) => ({
+      value: [d.x, d.y], symbolSize: d.r * 2, cluster_id: d.cluster_id, _dir: d,
+      itemStyle: { color: dirColor(d.cluster_id), opacity: 0.14, borderColor: dirColor(d.cluster_id),
+        borderWidth: 2 },
+      label: { show: true, formatter: () => (d.name || "").slice(0, 22), fontSize: 11, fontWeight: 600,
+        color: "#4a4265", position: "top" },
+    }));
+    const lineData = g.edges.map((e: any) => {
+      const a: any = g.authors.find((x: any) => x.id === e.source);
+      const p: any = paperMap.get(e.target);
+      return a && p ? { coords: [[a.x, a.y], [p.x, p.y]] } : null;
+    }).filter(Boolean);
+    const paperNodes = g.papers.map((p: any) => ({
+      value: [p.x, p.y], symbolSize: Math.max(3, p.r * 2), cluster_id: p.cluster_id, _p: p,
+      itemStyle: { color: dirColor(p.cluster_id), opacity: p.affinity == null ? 0.35 : 0.9,
+        borderColor: "#ffffff", borderWidth: p.affinity == null ? 0 : 1 },
+      label: { show: (p.affinity ?? 0) >= 0.92 && p.title,
+        formatter: () => (p.title || "").slice(0, 18), fontSize: 9, color: "#8b83a0" },
+    }));
+    const authorNodes = g.authors.map((a: any) => ({
+      value: [a.x, a.y], symbolSize: Math.max(10, a.r * 2), symbol: "diamond", cluster_id: a.cluster_id, _a: a,
+      itemStyle: { color: dirColor(a.cluster_id), opacity: 0.95, borderColor: "#fff", borderWidth: 1.5 },
+      label: { show: a.r >= 9, formatter: () => (a.name || "").slice(0, 9), fontSize: 10, color: "#4a4265" },
+    }));
+    chart.setOption({
+      tooltip: { formatter: (p: any) => {
+        if (p.seriesIndex === 3) {
+          const a = authorNodes[p.dataIndex]?._a;
+          return `<b>${esc(a?.name ?? "")}</b>${a?.zh ? `（${esc(a.zh)}）` : ""}<br><span style="color:#8b83a0">研究者 · 点击打开档案</span>`;
+        }
+        if (p.seriesIndex === 2) {
+          const pp = paperNodes[p.dataIndex]?._p;
+          return `<b>${esc(pp?.title ?? "")}</b><br>被引 ${pp?.cite ?? 0}${pp?.affinity != null ? ` · 方向关联度 ${pp.affinity.toFixed(2)}` : ""}<br><span style="color:#8b83a0">点击打开论文</span>`;
+        }
+        if (p.seriesIndex === 0) {
+          const dd = dirNodes[p.dataIndex]?._dir;
+          return `<b>${esc(dd?.name ?? "")}</b><br>规模 ${dd?.size ?? ""}<br><span style="color:#8b83a0">点击查看该方向研究者</span>`;
+        }
+        return "";
+      } },
+      grid: { left: 8, right: 8, top: 8, bottom: 8 },
+      xAxis: { type: "value", min: x0 - pad, max: x1 + pad, axisLine: { show: false },
+        axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
+      yAxis: { type: "value", min: y0 - pad, max: y1 + pad, axisLine: { show: false },
+        axisTick: { show: false }, axisLabel: { show: false }, splitLine: { show: false } },
+      series: [
+        { name: "方向区域", type: "scatter", data: dirNodes, z: 1, roam: true, scaleLimit: { min: 0.3, max: 6 } },
+        { name: "作者-论文连线", type: "lines", data: lineData, z: 2, silent: true,
+          lineStyle: { color: "#b8b0d0", width: 0.6, opacity: 0.3 } },
+        { name: "论文", type: "scatter", data: paperNodes, z: 3, roam: true },
+        { name: "研究者", type: "scatter", data: authorNodes, z: 4, roam: true },
+      ],
+    });
+    chart.on("click", (p: any) => {
+      if (p.seriesIndex === 3) {
+        const a = authorNodes[p.dataIndex]?._a;
+        if (a?.id) this.openAuthor(a.id);
+      } else if (p.seriesIndex === 2) {
+        const pp = paperNodes[p.dataIndex]?._p;
+        const pid = pp?.id?.replace("p:", "");
+        if (pid) this.openPaper(pid);
+      } else if (p.seriesIndex === 0) {
+        const d = dirNodes[p.dataIndex]?._dir;
+        if (d) this.drillDown(d.cluster_id, d.cluster_id);
+      }
+    });
+  }
+
+  /** 打开论文：优先 vault 内 paper 笔记（Obsidian 原生打开），否则提示 */
+  openPaper(pid: string) {
+    const f = this.plugin.app.vault.getFiles().find(x => x.path.endsWith(`/papers/paper-${pid}.md`));
+    if (f) {
+      this.plugin.app.workspace.openLinkText(f.basename, f.path);
+    } else {
+      new Notice(`论文 #${pid} 未在 vault 快照（实时模式可经服务查询）`);
+    }
   }
 
   renderDirList(ds: Direction[]) {

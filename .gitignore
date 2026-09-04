@@ -13,3 +13,8 @@ obsidian-plugin/dist/
 
 # 合成上下文包（analyze/extract.py 可重新生成）
 data/pack_*.json
+
+# 布局评分中间产物（经 layout_scores.py 入库后可删）
+data/layout_aff_*.json
+data/layout_map_*.json
+data/layout_*_preview.json

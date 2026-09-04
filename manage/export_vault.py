@@ -427,6 +427,57 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
     return {"directions": n_dir, "researchers": n_res, "papers": n_pap, "events": n_ev}
 
 
+def export_layout(conn, out: Path, domain: str):
+    """导出最新布局批次 → <peopar>/_layout/<domain>.json（插件静态渲染信息化方向图谱）。"""
+    batch = conn.execute(
+        "SELECT MAX(batch_id) b FROM node_layout WHERE domain_id=?", (domain,)).fetchone()["b"]
+    if not batch:
+        print(f"[export-layout] {domain}: 无布局（先 analyze/layout.py {domain}）")
+        return
+    rows = conn.execute(
+        "SELECT * FROM node_layout WHERE domain_id=? AND batch_id=? ORDER BY type", (domain, batch))
+    data = {"domain": domain, "batch": batch, "directions": [], "papers": [], "authors": [], "edges": []}
+    for r in rows:
+        rec = {"id": r["id"], "x": r["x"], "y": r["y"], "r": r["r"],
+               "cluster_id": r["cluster_id"], "affinity": r["affinity"]}
+        if r["type"] == "direction":
+            c = conn.execute("SELECT name FROM clusters WHERE id=?", (r["cluster_id"],)).fetchone()
+            size = conn.execute("SELECT COUNT(*) n FROM author_clusters WHERE cluster_id=?",
+                                (r["cluster_id"],)).fetchone()["n"]
+            rec["name"] = c["name"] if c else None
+            rec["size"] = size
+            data["directions"].append(rec)
+        elif r["type"] == "paper":
+            p = conn.execute("SELECT title, cited_by_count FROM papers WHERE id=?",
+                             (r["id"][2:],)).fetchone()
+            if p:
+                rec["title"] = p["title"]
+                rec["cite"] = p["cited_by_count"]
+                data["papers"].append(rec)
+        else:
+            a = conn.execute("SELECT name_display, name_zh FROM authors WHERE id=?", (r["id"],)).fetchone()
+            if a:
+                rec["name"] = a["name_display"]
+                rec["zh"] = a["name_zh"]
+                data["authors"].append(rec)
+    auth = {a["id"]: a for a in data["authors"]}
+    for a in auth:
+        n = 0
+        for p in data["papers"]:
+            if p.get("cluster_id") != auth[a].get("cluster_id") or n >= 3:
+                continue
+            if conn.execute("SELECT 1 FROM paper_authors WHERE author_id=? AND paper_id=? LIMIT 1",
+                            (a, p["id"][2:])).fetchone():
+                data["edges"].append({"source": a, "target": p["id"], "kind": "authored"})
+                n += 1
+    ldir = out / "_layout"
+    ldir.mkdir(parents=True, exist_ok=True)
+    (ldir / f"{domain}.json").write_text(
+        json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    print(f"[export-layout] {domain}: {len(data['directions'])} 方向 / {len(data['papers'])} 论文 / "
+          f"{len(data['authors'])} 作者 → _layout/{domain}.json")
+
+
 def main():
     ap = argparse.ArgumentParser(description="导出 vault 投影（<方向名>/peopar/ 目录 md 笔记）")
     ap.add_argument("vault", help="Obsidian 仓库根目录")
@@ -456,6 +507,7 @@ def main():
         stats[d] = st
         print(f"[export] {d}: 方向 {st['directions']} / 研究者 {st['researchers']} / "
               f"论文 {st['papers']} / 事件 {st['events']}")
+        export_layout(conn, out, d)
         md_file(out, f"{d}.peopar", {"domain": d, "type": "peopar-view", "topic": args.topic},
                 f"# 百官行述 · {d}\n\n双击以插件视图打开（大方向：{args.topic}）。")
     md_file(out, "_sync.md",
