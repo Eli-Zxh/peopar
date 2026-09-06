@@ -40,7 +40,7 @@ export interface TrendSeries { cluster_id: number; label: number; name: string |
 export interface TrendsResp { domain: string; series: TrendSeries[]; }
 
 export interface Inst { institution: string; start_year?: number | null; end_year?: number | null; source_tag: string; verified: number; note?: string | null; }
-export interface AuthorSnap { id?: number; focus?: string; summary?: string; key_contributions?: string; risks?: string; review_status?: string; generated_at?: string; model?: string; }
+export interface AuthorSnap { id?: number; focus?: string; keynote?: string; summary?: string; key_contributions?: string; risks?: string; review_status?: string; generated_at?: string; model?: string; }
 export interface Researcher {
   id: string; name: string; zh?: string | null; tier: string; papers: number;
   institution: Inst | null; snapshot: AuthorSnap | null;

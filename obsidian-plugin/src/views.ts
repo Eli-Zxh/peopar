@@ -35,7 +35,7 @@ export function dirName(d: { name?: string | null; label?: number }): string {
 export class AtlasApp {
   plugin: PeoparPlugin;
   el: HTMLElement;
-  provider: DataProvider;
+  get provider(): DataProvider { return this.plugin.provider; }
   user: string = "user";
   domain: string = "";
   dirs: DirectionsResp | null = null;
@@ -49,7 +49,6 @@ export class AtlasApp {
   constructor(plugin: PeoparPlugin, el: HTMLElement) {
     this.plugin = plugin;
     this.el = el;
-    this.provider = plugin.provider;
   }
 
   get live(): LiveProvider | null { return this.provider instanceof LiveProvider ? this.provider : null; }
@@ -165,6 +164,7 @@ export class AtlasApp {
       await this.plugin.saveData(this.plugin.settings);
       await this.plugin.refreshProvider();
       this.dirs = null;
+      this.showTab("graph");
       await this.loadDomains();
       this.renderSync();
       new Notice(`已切换大方向：${v}`);
@@ -739,6 +739,7 @@ export class AtlasApp {
         <div class="pp-card pp-snapcard">
           <div class="pp-card-title">画像 ${statusBadge(snap.review_status || "pending")}
             <span class="pp-meta">${esc((snap as any).model || "")}</span></div>
+          ${snap.content.keynote ? `<div class="pp-keynote">💡 ${esc(snap.content.keynote)}</div>` : ""}
           ${snap.content.focus ? `<div class="pp-snap-focus">🎯 ${esc(snap.content.focus)}</div>` : ""}
           ${snap.content.summary ? `<div class="pp-meta">${esc(snap.content.summary)}</div>` : ""}
           ${snap.content.key_contributions ? `<div class="pp-sec"><b>主要贡献</b><div class="pp-meta">${esc(Array.isArray(snap.content.key_contributions) ? snap.content.key_contributions.join("；") : snap.content.key_contributions)}</div></div>` : ""}

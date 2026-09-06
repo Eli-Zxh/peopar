@@ -228,11 +228,14 @@ def solve(domain, k=12, include_pending=False, seed=42, out_json=None):
     edges.extend(_cross_dir_edges(conn, aff, nodes_paper, centers))
 
     for pp in nodes_paper:
-        rr = conn.execute("SELECT abstract, note, pmid FROM papers WHERE id=?", (pp["paper_id"],)).fetchone()
+        rr = conn.execute("SELECT abstract, note, pmid, title_cn, keynote FROM papers WHERE id=?",
+                          (pp["paper_id"],)).fetchone()
         if rr:
             pp["abstract"] = (rr["abstract"] or "")[:160]
             pp["note"] = rr["note"] or ""
             pp["pmid"] = rr["pmid"] or None
+            pp["title_cn"] = rr["title_cn"] or None
+            pp["keynote"] = rr["keynote"] or None
 
     batch = f"layout-{date.today().isoformat()}-{seed}"
     conn.execute("DELETE FROM node_layout WHERE domain_id=? AND batch_id=?", (domain, batch))

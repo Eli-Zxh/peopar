@@ -1,0 +1,55 @@
+{
+ "domain": "ad_lesne",
+ "prompt_ver": "author_profile.md@v2-202609",
+ "model": "peopar-agent@2026-09 pilot",
+ "author_snapshots": [
+  {
+   "author_id": "BG000007",
+   "keynote": "提出Aβ*56致记忆损伤假说（Nature 2006，已撤稿）；主研Aβ寡聚体毒性机制。"
+  },
+  {
+   "author_id": "BG000006",
+   "keynote": "主研脑内Aβ寡聚体与衰老/AD关联（Brain 2013）；与Lesné长期合作。"
+  },
+  {
+   "author_id": "BG000030",
+   "keynote": "参与SNCA下调对认知性别差异及小鼠学习记忆研究（2022-2024共著）。"
+  },
+  {
+   "author_id": "BG000032",
+   "keynote": "参与α-突触核蛋白相关认知与小鼠学习记忆研究（2022-2024共著）。"
+  },
+  {
+   "author_id": "BG000033",
+   "keynote": "研究α-突触核蛋白对AD表型双向调控（Acta Neuropathol 2018）等。"
+  },
+  {
+   "author_id": "BG000040",
+   "keynote": "研究Aβ*56诱导tau磷酸化（Sci Signal 2017，已撤稿）及α-syn机制。"
+  },
+  {
+   "author_id": "BG000037",
+   "keynote": "共著Aβ组装体损伤记忆论文（Nature 2006，已撤稿）。"
+  },
+  {
+   "author_id": "BG000010",
+   "keynote": "Aβ寡聚体致认知障碍方向核心作者（Nature 2006已撤稿）；研究机制与干预。"
+  },
+  {
+   "author_id": "BG000036",
+   "keynote": "Aβ/α-syn寡聚体研究者：涉Nature 2006（已撤稿），撰寡聚体综述。"
+  },
+  {
+   "author_id": "BG000389",
+   "keynote": "法国学者；研NMDA促Aβ生成与TGF-β神经保护（J Neurosci 2005等）。"
+  },
+  {
+   "author_id": "BG000387",
+   "keynote": "法国学者；研究脑缺血、TGF-β神经保护及NMDA促Aβ机制（2000-2005系列）。"
+  },
+  {
+   "author_id": "BG000170",
+   "keynote": "法国学者；主研TGF-β/缺血神经保护与NMDA促Aβ，参与Aβ*56研究（2017已撤稿）。"
+  }
+ ]
+}

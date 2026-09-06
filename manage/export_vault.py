@@ -217,12 +217,14 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
             "inst_verified": (aff["verified"] if aff else 0),
             "orcid": f'"{a["orcid"] or ""}"' if a["orcid"] else '""',
             "flags": flags, "directions": dirs, "representative": reps,
-            "focus": f'"{focus}"', "review": review,
+            "focus": f'"{focus}"', "keynote": f'"{content.get("keynote", "")}"', "review": review,
         }
         # 正文：三层研究方向结构（确定性优先，LLM 画像仅已审展示）
         body = f"# {a['name_display']}" + (f"（{a['name_zh']}）" if a["name_zh"] else "") + "\n\n"
         body += f"> [!info] 概要\n> "
         parts = []
+        if content.get("keynote"):
+            parts.append(f"💡 {content['keynote']}")
         if a["tier"] == "core":
             parts.append("核心层")
         if aff:
@@ -355,15 +357,21 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
         body = f"# {name}\n\n"
         body += f"> [!summary] 方向概览\n> 规模 **{size}** 人 · 论文 **{st['n'] or 0}** · 近三年 **{st['recent'] or 0}** · 被引 **{st['cit'] or 0}**" + \
                 (f" · 审阅：{review}" if review else "") + "\n\n"
-        # 连贯叙事（弱标签段落式；结构项目仅作段落内加粗短语，不做大标题）
-        if content.get("definition"):
-            body += "**这个方向在做什么**：" + content["definition"] + "\n\n"
-        if content.get("current_conclusions"):
-            body += "**目前的研究到什么程度（结论）**：" + content["current_conclusions"] + "\n\n"
-        if content.get("timeline"):
-            body += "**它是怎么发展过来的**：\n" + arrow_timeline(content["timeline"]) + "\n\n"
-        if content.get("controversies"):
-            body += "**还有什么没定论（分歧/风险）**：" + content["controversies"] + "\n\n"
+        # v3：有 narrative 则 keynote 首行 + 面向外行的连贯叙述（结构化四字段仅审查，不进正文）
+        if content.get("narrative"):
+            if content.get("keynote"):
+                body += f"> 💡 **{content['keynote']}**\n\n"
+            body += content["narrative"] + "\n\n"
+        else:
+            # 旧版兼容：弱标签段落拼接（无 narrative 时）
+            if content.get("definition"):
+                body += "**这个方向在做什么**：" + content["definition"] + "\n\n"
+            if content.get("current_conclusions"):
+                body += "**目前的研究到什么程度（结论）**：" + content["current_conclusions"] + "\n\n"
+            if content.get("timeline"):
+                body += "**它是怎么发展过来的**：\n" + arrow_timeline(content["timeline"]) + "\n\n"
+            if content.get("controversies"):
+                body += "**还有什么没定论（分歧/风险）**：" + content["controversies"] + "\n\n"
         if members:
             body += "## 代表研究者\n\n"
             for aid, nm in members[:20]:

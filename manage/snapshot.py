@@ -172,10 +172,19 @@ def cmd_apply_authors(args):
         if bad:
             fail.append({"author_id": aid, "reason": f"代表论文不属于该作者域内论文 {bad[:5]}…"})
             continue
-        content = json.dumps({k: item[k] for k in
-                              ("focus", "summary", "key_contributions", "risks",
-                               "keynote", "representative_paper_ids") if k in item},
-                             ensure_ascii=False)
+        base = {}
+        oldc = conn.execute(
+            "SELECT content FROM author_snapshots WHERE author_id=? ORDER BY id DESC LIMIT 1",
+            (aid,)).fetchone()
+        if oldc and oldc["content"]:
+            try:
+                base = json.loads(oldc["content"])
+            except json.JSONDecodeError:
+                base = {}
+        merged = {**base, **{k: item[k] for k in
+                            ("focus", "summary", "key_contributions", "risks",
+                             "keynote", "representative_paper_ids") if k in item}}
+        content = json.dumps(merged, ensure_ascii=False)
         sig = basis_signature(papers)
         old = conn.execute(
             "SELECT id FROM author_snapshots WHERE author_id=? ORDER BY id DESC LIMIT 1",
