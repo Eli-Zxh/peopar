@@ -44,6 +44,7 @@ export class AtlasApp {
   drillCid: number | null = null;
   private offData: (() => void) | null = null;
   private offResize: (() => void) | null = null;
+  private _graphCtl: { zoomToDir: (c: number) => void; resetView: () => void } | null = null;
 
   constructor(plugin: PeoparPlugin, el: HTMLElement) {
     this.plugin = plugin;
@@ -337,12 +338,21 @@ export class AtlasApp {
       applyView();
     };
     zr.on("wheel", (ev: any) => {
-      const rect = chart.getDom().getBoundingClientRect();
-      const fx = (ev.offsetX != null ? ev.offsetX : ev.clientX - rect.left) / rect.width;
-      const fy = (ev.offsetY != null ? ev.offsetY : ev.clientY - rect.top) / rect.height;
-      const k = ev.wheelDelta > 0 || ev.deltaY < 0 ? 1.22 : 1 / 1.22;
-      zoomAt(fx, fy, k);
+      if (ev && ev.event && ev.event.preventDefault) ev.event.preventDefault();
+      const k = ev && (ev.event?.deltaY < 0 || ev.wheelDelta > 0) ? 1.24 : 1 / 1.24;
+      zoomCenter(k);
     });
+    const zoomCenter = (k: number) => {
+      const nf = clampF(view.f * k);
+      k = nf / view.f; view.f = nf;
+      const cx = (view.x0 + view.x1) / 2, cy = (view.y0 + view.y1) / 2;
+      const w2 = (view.x1 - view.x0) / (2 * k), h2 = (view.y1 - view.y0) / (2 * k);
+      view.x0 = cx - w2; view.x1 = cx + w2;
+      view.y0 = cy - h2; view.y1 = cy + h2;
+      if (view.x1 - view.x0 > W0 * 2) { view.x0 = X0; view.x1 = X1; }
+      if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
+      applyView();
+    };
     zr.on("mousedown", (ev: any) => { panning = true; moved = 0; px = ev.offsetX; py = ev.offsetY; });
     zr.on("mousemove", (ev: any) => {
       if (!panning) return;
@@ -373,14 +383,17 @@ export class AtlasApp {
         if (d) { activeDir = activeDir === d.cluster_id ? null : d.cluster_id; lines = mkLines(); applyView(); }
       }
     });
-    const fsBtn = this.el.querySelector("section[data-sec='graph'] .pp-grow")?.createEl("button", {
-      cls: "pp-btn pp-btn-ghost pp-btn-sm", attr: { title: "最大化图谱" }, text: "⛶ 放大" });
-    fsBtn?.addEventListener("click", () => {
-      const host = this.el.querySelector('section[data-sec="graph"]') as HTMLElement;
-      host.classList.toggle("pp-fullscreen");
-      fsBtn.textContent = host.classList.contains("pp-fullscreen") ? "✕ 还原" : "⛶ 放大";
-      setTimeout(() => chart.resize(), 80);
-    });
+    // 聚焦某方向（左侧簇信息点击 / 图谱需要时）：视口放大到该方向
+    this._graphCtl = { zoomToDir: (cid: number) => {
+      const d = g.directions.find((x: any) => x.cluster_id === cid);
+      if (!d) return;
+      activeDir = cid; lines = mkLines();
+      const r = Math.max(d.r * 3.4, 140);
+      view = { x0: d.x - r, x1: d.x + r, y0: d.y - r, y1: d.y + r, f: view.f };
+      if (view.x1 - view.x0 >= W0) view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 };
+      view.f = W0 / (view.x1 - view.x0);
+      applyView();
+    }, resetView: () => { view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 }; activeDir = null; lines = mkLines(); applyView(); } };
   }
 
   /** 论文页：标题(别名/一句话)/摘要/笔记/作者/方向；离线库或实时均可展示，编辑需实时服务 */
@@ -452,12 +465,19 @@ export class AtlasApp {
           : d.snap_review === "rejected" ? '<span class="pp-badge pp-b-rejected">驳回</span>'
           : '<span class="pp-badge pp-b-pending">待审</span>') : ""}
         <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${(d.top_authors || []).slice(0, 3).map((x: any) => esc(x.name)).join(" · ")}</span>
+        <span class="pp-meta"><button class="pp-btn pp-btn-ghost pp-btn-sm" data-note="${d.cluster_id}">📖</button></span>
       </div>`;
-    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击查看研究者）</span></div>` +
+    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击在图谱聚焦放大 · 📖 看笔记）</span></div>` +
       (named.length ? named.map(item).join("") : "") +
       (unnamed.length ? `<details class="pp-unamed"><summary class="pp-meta">未命名方向（${unnamed.length}）</summary>${unnamed.map(item).join("")}</details>` : "");
-    box.querySelectorAll(".pp-diritem").forEach((el) => el.addEventListener("click", () => {
-      this.drillDown(+(el as HTMLElement).dataset.cid!);
+    box.querySelectorAll(".pp-diritem").forEach((el) => el.addEventListener("click", (ev) => {
+      const cid = +(el as HTMLElement).dataset.cid!;
+      if ((ev.target as HTMLElement).closest("[data-note]")) { this.openDirection(cid); return; }
+      this._graphCtl?.zoomToDir(cid);
+    }));
+    box.querySelectorAll("[data-note]").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this.openDirection(+(b as HTMLElement).dataset.note!);
     }));
   }
 
@@ -469,19 +489,25 @@ export class AtlasApp {
   private async renderMarkdown(mdText: string, into: HTMLElement) {
     const cm = new Component();
     await MarkdownRenderer.render(this.plugin.app, mdText, into, "", cm);
-    // wikilink 跳转：BG… → 研究者档案；direction-N → 方向笔记；paper-N → 论文页
+    // wikilink 路由到插件页：BG→研究者档案 / direction-N→方向笔记 / paper-N→论文页
+    // capture=true：先于 Obsidian 默认（会去开 md 文件）处理
     into.addEventListener("click", (ev: MouseEvent) => {
       const a = (ev.target as HTMLElement).closest("a.internal-link") as HTMLAnchorElement | null;
       if (!a) return;
-      const h = a.getAttribute("data-href") || a.getAttribute("href") || "";
-      const m = /^(BG\d+|direction-\d+|paper-\d+)$/i.exec(h.replace(/^#/, ""));
-      if (!m) return;
-      ev.preventDefault(); ev.stopPropagation();
-      const tok = m[1];
-      if (/^BG/i.test(tok)) this.openAuthor(tok);
-      else if (tok.startsWith("direction-")) this.openDirection(+tok.split("-")[1]);
-      else if (tok.startsWith("paper-")) this.openPaper(tok.split("-")[1]);
-    });
+      const raw = a.getAttribute("data-href") || a.getAttribute("href") || "";
+      const base = raw.replace(/.*?\/(?=BG\d+$|direction-\d+$|paper-\d+$)/, "").replace(/^#/, "");
+      const m = /^(BG\d+|direction-(\d+)|paper-(\d+))$/i.exec(base);
+      if (!m) return;                 // 其它链接（域外/普通）走 Obsidian 默认
+      ev.preventDefault();
+      ev.stopPropagation();
+      if (/^BG/i.test(base)) this.openAuthor(base);
+      else if (m[2]) this.openDirection(+m[2]);
+      else if (m[3]) this.openPaper(m[3]);
+    }, true);
+    into.addEventListener("auxclick", (ev: MouseEvent) => {  // 中键保持默认
+      const a = (ev.target as HTMLElement).closest("a.internal-link") as HTMLAnchorElement | null;
+      if (a) ev.stopPropagation();
+    }, true);
   }
 
   /** 方向笔记视图（在「研究方向」页签内渲染方向 md；含编辑/查看研究者入口） */

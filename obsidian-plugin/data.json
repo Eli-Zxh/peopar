@@ -1,0 +1,6 @@
+{
+  "enableServer": false,
+  "topic": "神经语言学与失语症",
+  "peoparDir": "~/Documents/script/peopar",
+  "killServerOnUnload": false
+}
