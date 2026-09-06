@@ -244,6 +244,9 @@ export class AtlasApp {
       itemStyle: { color: dirColor(a.cluster_id), opacity: 0.97, borderColor: "#fff", borderWidth: 1.5 },
       label: { show: true, formatter: () => (a.name || "").slice(0, 8), fontSize: 9, color: "#2e2942" },
     }));
+    const totalEdges = (g.edges || []).length;
+    const authCount = (g.edges || []).filter((e: any) => e.kind === "authored").length;
+    const crossCount = (g.edges || []).filter((e: any) => e.kind === "crossdir").length;
     let activeDir: number | null = null;
     const mkLines = () => {
       const build = (kind: string) => g.edges.filter((ed: any) => ed.kind === kind).map((ed: any): any => {
@@ -265,11 +268,11 @@ export class AtlasApp {
       { name: "方向区域", type: "scatter", data: dirNodes, z: 1,
         symbolSize: (v: any, p: any) => baseDir(dirNodes[p.dataIndex]._d) * Math.max(1, Math.min(6, view.f * 0.9)) },
       { name: "作者归属", type: "lines", data: lines.authored, z: 3, silent: true,
-        lineStyle: { color: "#5649b0", width: 1.25 } },
+        lineStyle: { color: "#4a3da0", width: 1.6, opacity: 0.9 } },
       { name: "论文共著", type: "lines", data: lines.cowrite, z: 3, silent: true,
-        lineStyle: { color: "#948ac2", width: 1, opacity: 0.6 } },
+        lineStyle: { color: "#7f75b8", width: 1.1, opacity: 0.7 } },
       { name: "跨方向关联", type: "lines", data: lines.crossdir, z: 3, silent: true,
-        lineStyle: { color: "#d24d4d", width: 1.9, type: "dashed" } },
+        lineStyle: { color: "#cf2f2f", width: 2.4, opacity: 0.95, type: "dashed" } },
       { name: "论文", type: "scatter", data: paperNodes, z: 4, cursor: "pointer",
         emphasis: { scale: 1.7 },
         symbolSize: (v: any, p: any) => basePaper(paperNodes[p.dataIndex]._p) * Math.max(1, Math.min(4, view.f)),
@@ -307,10 +310,12 @@ export class AtlasApp {
         }
         if (si === 4) {
           const pp = paperNodes[p.dataIndex]?._p;
-          let h = `<b>${esc(pp?.title_cn || pp?.title || "")}</b>`;
+          const disp = pp?.title_cn || pp?.title || "";
+          let h = `<b>${esc(disp)}</b>`;
           if (pp?.keynote) h += `<br><b style="color:#35507c">${esc(pp.keynote)}</b>`;
-          if (pp?.note) h += `<br><span style="color:#b96a00">📝 ${esc(pp.note.slice(0, 90))}</span>`;
-          if (!pp?.keynote && pp?.abstract) h += `<br><span style="color:#68727f">${esc((pp.abstract || "").slice(0, 130))}…</span>`;
+          else if (pp?.abstract) h += `<br><span style="color:#68727f">${esc((pp.abstract || "").slice(0, 120))}…</span>`;
+          else h += `<br><span style="color:#8b83a0">（一句话总结待新一轮生成）</span>`;
+          if (pp?.note) h += `<br><span style="color:#b96a00">📝 ${esc(pp.note.slice(0, 80))}</span>`;
           h += `<br><span style="color:#8b83a0">被引 ${pp?.cite ?? 0}${pp?.affinity != null ? " · 关联 " + pp.affinity.toFixed(2) : ""} · 点击打开论文页</span>`;
           return h;
         }
@@ -349,6 +354,10 @@ export class AtlasApp {
       if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
       schedule(() => { chart.setOption({ xAxis: { min: view.x0, max: view.x1 }, yAxis: { min: view.y0, max: view.y1 }, series: seriesDefs() as any }); });
     };
+    (() => {  // 连线自检角标
+      const tag = el.createEl("div", { cls: "pp-edges-tag", text: totalEdges ? `连线 ${authCount}作者·${crossCount}跨向` : "（布局无连线数据）" });
+      setTimeout(() => tag.remove(), totalEdges ? 6000 : 15000);
+    })();
     // 缩放：DOM 原生 wheel 监听（capture + passive:false）——避免 zrender/页面滚动冲突
     function zoomCenter(k: number) {
       const nf = clampF(view.f * k);
@@ -378,9 +387,9 @@ export class AtlasApp {
       moved += Math.abs(dx) + Math.abs(dy);
       const rect = chart.getDom().getBoundingClientRect();
       const sx = (view.x1 - view.x0) / rect.width, sy = (view.y1 - view.y0) / rect.height;
-      // 滚动式平移：拖右看右侧（x 同向），拖下看下方（y 数值轴向下为小值 → 反号）
-      view.x0 += dx * sx; view.x1 += dx * sx;
-      view.y0 -= dy * sy; view.y1 -= dy * sy;
+      // 视角朝拖动反方向移动（拖右 → 视角左移；拖下 → 视角上移）
+      view.x0 -= dx * sx; view.x1 -= dx * sx;
+      view.y0 += dy * sy; view.y1 += dy * sy;
       px = ev.offsetX; py = ev.offsetY;
       schedule(applyAxis);
     });
