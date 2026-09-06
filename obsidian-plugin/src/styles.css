@@ -182,3 +182,6 @@
   background:var(--p-bg);overflow:auto}
 .pp-fullscreen .pp-row{height:calc(100vh - 120px)}
 .pp-fullscreen #pp-dirchart{height:100% !important}
+.pp-live-on{color:#fff !important;background:var(--p-ok) !important}
+.pp-keynote{margin:6px 0;background:rgba(53,80,124,.08);border-left:3px solid #35507c;
+  padding:6px 10px;border-radius:6px;font-size:13px;color:#243a5e}

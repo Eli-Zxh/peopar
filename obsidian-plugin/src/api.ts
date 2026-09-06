@@ -77,6 +77,7 @@ export interface DataProvider {
   author(id: string): Promise<AuthorDetail>;
   authorSnapshot(id: string): Promise<AuthorSnapshotResp | null>;
   authorTags(id: string): Promise<{ tag: string; dim: string; status: string }[]>;
+  paperDetail(pid: number): Promise<any | null>;
   events(): Promise<FraudEvent[]>;
   eventDetail(id: number): Promise<FraudEventDetail>;
   search(q: string): Promise<any>;

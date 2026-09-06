@@ -71,6 +71,7 @@ export class AtlasApp {
         <button data-tab="events">造假事件</button>
       </nav>
       <span class="pp-sync" title="数据来源与同步时间"></span>
+      <button class="pp-btn pp-btn-sm pp-btn-ghost" data-live-toggle title="切换实时服务（读 SQLite 权威/编辑）">实时</button>
     </div>
     <main class="pp-main">
       <section data-sec="graph">
@@ -89,6 +90,14 @@ export class AtlasApp {
     </main>`;
 
     c.querySelectorAll(".pp-nav button").forEach(b => b.addEventListener("click", () => this.showTab((b as HTMLElement).dataset.tab!)));
+    c.querySelector("[data-live-toggle]")?.addEventListener("click", async () => {
+      this.plugin.settings.enableServer = !this.plugin.settings.enableServer;
+      await this.plugin.saveData(this.plugin.settings);
+      await this.plugin.refreshProvider();
+      new Notice(this.provider.serverConnected() ? "已连接实时服务（SQLite 权威）" : "已切回离线快照");
+      if (this.domain) this.loadGraph();
+      this.renderSync();
+    });
     (c.querySelector(".pp-domain") as HTMLSelectElement).addEventListener("change", e => {
       this.domain = (e.target as HTMLSelectElement).value;
       this.loadGraph();
@@ -109,14 +118,17 @@ export class AtlasApp {
 
   renderSync() {
     const el = this.el.querySelector(".pp-sync") as HTMLElement;
-    if (this.provider.serverConnected()) {
-      el.textContent = "● 实时（本地服务）";
+    const live = this.provider.serverConnected();
+    if (live) {
+      el.textContent = "● 实时（SQLite 权威）";
       el.classList.add("pp-sync-live");
     } else {
       const t = this.provider.lastSync();
-      el.textContent = "○ vault 快照" + (t ? ` · ${t.slice(5, 16)}` : "");
+      el.textContent = "○ 离线快照" + (t ? ` · ${t.slice(5, 16)}` : "");
       el.classList.remove("pp-sync-live");
     }
+    const lb = this.el.querySelector("[data-live-toggle]") as HTMLButtonElement;
+    if (lb) { lb.textContent = live ? "● 实时开" : "○ 实时关"; lb.classList.toggle("pp-live-on", live); }
   }
 
   showTab(tab: string) {
@@ -327,7 +339,7 @@ export class AtlasApp {
       } else if (p.seriesIndex === 4) {
         const pp = paperNodes[p.dataIndex]?._p;
         const pid = pp?.id?.replace("p:", "");
-        if (pid) this.openPaper(pid, pp);
+        if (pid) this.openPaper(pid);
       } else if (p.seriesIndex === 0) {
         const d = dirNodes[p.dataIndex]?._d;
         if (d) { activeDir = activeDir === d.cluster_id ? null : d.cluster_id; lines = mkLines(); applyView(); }
@@ -343,58 +355,59 @@ export class AtlasApp {
     });
   }
 
-  /** 论文页：标题(别名)/期刊/年份/摘要/笔记/方向关联/作者；Live 编辑写回 */
-  async openPaper(pid: string, node?: any) {
+  /** 论文页：标题(别名/一句话)/摘要/笔记/作者/方向；离线库或实时均可展示，编辑需实时服务 */
+  async openPaper(pid: string) {
     let d: any = null;
-    if (this.live) {
-      try { d = await this.live.get(`/api/paper/${pid}`); } catch { d = null; }
-    }
-    // 静态：布局 JSON 兜底（图节点论文带摘要/笔记）
-    if (!d) {
+    d = await this.provider.paperDetail(Number(pid));
+    if (!d) {   // 离线库未覆盖 → 布局节点兜底（图节点）
       const lay = await this.provider.layout(this.domain).catch(() => null);
-      const hit = lay?.papers?.find((p: any) => p.id === `p:${pid}` || String(p.paper_id) === pid);
-      if (hit) d = { title: hit.title, title_cn: null, year: null, journal: "",
-        abstract: hit.abstract || "", display_abstract: hit.abstract || "",
-        note: hit.note || "", pmid: hit.pmid || null, cited: hit.cite, affinity: hit.affinity,
-        authors: [] };
+      const hit = lay?.papers?.find((p: any) => p.id === `p:${pid}`);
+      if (hit) d = { title: hit.title, title_cn: null, keynote: null,
+        abstract: hit.abstract || "", journal: "", year: null,
+        cited: hit.cite, pmid: hit.pmid || null, note: hit.note || "", affinity: hit.affinity, authors: [] };
     }
-    if (!d) { new Notice("论文详情不可用（实时服务下可获取全量）"); return; }
+    if (!d) { new Notice("该论文详情不在离线库（启用实时服务可获取）"); return; }
     const ov = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
     const card = ov.createEl("div", { cls: "pp-card pp-paper-panel" });
+    const editHtml = this.live ? `
+      <div class="pp-sec"><b>中文名/总结（图与列表优先显示）</b>
+        <textarea id="pp-titlecn" class="pp-input" rows="2">${esc(d.title_cn || "")}</textarea></div>
+      <div class="pp-sec"><b>一句话读懂（20–50 字，hover 显示）</b>
+        <textarea id="pp-keynote" class="pp-input" rows="2">${esc(d.keynote || "")}</textarea></div>
+      <div class="pp-sec"><b>📝 笔记</b>
+        <textarea id="pp-note" class="pp-input" rows="2">${esc(d.note || "")}</textarea></div>
+      <div class="pp-sec"><b>摘要注记（覆盖显示）</b>
+        <textarea id="pp-absov" class="pp-input" rows="2">${esc(d.abstract_override || "")}</textarea></div>
+      <button class="pp-btn pp-btn-primary" data-save>保存修订</button>`
+      : `<div class="pp-meta" style="margin-top:8px">当前为离线快照；启用「实时服务」后可编辑（中文名/一句话/笔记/摘要注记）并写入数据库。</div>`;
     card.innerHTML = `<div class="pp-panel-head"><b>论文</b>
       <button class="pp-btn pp-btn-ghost pp-btn-sm" data-close>✕</button></div>
       <h3>${esc(d.title_cn || d.title)}</h3>
       <div class="pp-meta">${d.year || ""} · ${esc(d.journal || "")} · 被引 <b>${d.cited ?? d.cite ?? 0}</b>
-        ${d.retraction_status && d.retraction_status !== "none" ? ` · ⚠️ ${esc(d.retraction_status)}` : ""}
+        ${d.retraction && d.retraction !== "none" ? ` · ⚠️ ${esc(d.retraction)}` : ""}
         ${d.pmid ? ` · <a class="pp-ext" href="https://pubmed.ncbi.nlm.nih.gov/${d.pmid}/" target="_blank">PubMed</a>` : ""}
         ${d.affinity != null ? ` · 与方向关联度 <b>${d.affinity.toFixed(2)}</b>` : ""}</div>
+      ${d.keynote ? `<div class="pp-keynote">💡 ${esc(d.keynote)}</div>` : ""}
       ${d.title_cn ? `<div class="pp-meta">原文：${esc(d.title)}</div>` : ""}
-      ${(d.authors || []).length ? `<div class="pp-meta" style="margin-top:4px">作者：${(d.authors as any[]).map((x: any) => esc(x.name_display)).join("、")}</div>` : ""}
-      <div class="pp-sec"><b>摘要${d.abstract_override ? "（人工注记）" : ""}</b>
-        <div class="pp-meta" style="white-space:pre-wrap">${esc(d.display_abstract || d.abstract || "（无摘要——启用实时服务可获取完整摘要）")}</div></div>
+      ${(d.authors || []).length ? `<div class="pp-meta" style="margin-top:4px">作者：${(d.authors as any[]).map((x: any) => esc(typeof x === "string" ? x : x.name_display)).join("、")}</div>` : ""}
+      <div class="pp-sec"><b>摘要</b>
+        <div class="pp-meta" style="white-space:pre-wrap">${esc(d.display_abstract || d.abstract || "（无摘要）")}</div></div>
       ${d.note ? `<div class="pp-sec"><b>📝 笔记</b><div class="pp-meta">${esc(d.note)}</div></div>` : ""}
-      ${this.live ? `
-        <div class="pp-sec"><b>中文名/总结（title_cn，图上优先显示）</b>
-          <textarea id="pp-titlecn" class="pp-input" rows="2">${esc(d.title_cn || "")}</textarea></div>
-        <div class="pp-sec"><b>📝 笔记</b>
-          <textarea id="pp-note" class="pp-input" rows="2">${esc(d.note || "")}</textarea></div>
-        <div class="pp-sec"><b>摘要注记（覆盖显示，不改源摘要）</b>
-          <textarea id="pp-absov" class="pp-input" rows="2">${esc(d.abstract_override || "")}</textarea></div>
-        <button class="pp-btn pp-btn-primary" data-save>保存修订</button>`
-      : `<div class="pp-meta" style="margin-top:8px">启用「实时服务」后可在插件内编辑（中文总结/笔记/摘要注记）。</div>`}
-      <div class="pp-meta" style="margin-top:6px">论文 #${pid} · DB 权威存储</div>`;
+      ${editHtml}
+      <div class="pp-meta" style="margin-top:6px">论文 #${pid} · ${this.live ? "数据库实时" : "vault 离线快照"}</div>`;
     ov.querySelector("[data-close]")?.addEventListener("click", () => ov.remove());
     ov.addEventListener("click", (ev: MouseEvent) => { if (ev.target === ov) ov.remove(); });
     const save = ov.querySelector("[data-save]");
     save?.addEventListener("click", async () => {
       if (!this.live) return;
       await this.live.post(`/api/paper/${pid}/edit`, {
+        title_cn: (ov.querySelector("#pp-titlecn") as HTMLTextAreaElement)?.value ?? null,
+        keynote: (ov.querySelector("#pp-keynote") as HTMLTextAreaElement)?.value ?? null,
         note: (ov.querySelector("#pp-note") as HTMLTextAreaElement)?.value ?? null,
         abstract_override: (ov.querySelector("#pp-absov") as HTMLTextAreaElement)?.value ?? null,
-        title_cn: (ov.querySelector("#pp-titlecn") as HTMLTextAreaElement)?.value ?? null,
         by: this.user,
       });
-      new Notice("论文修订已写回数据库");
+      new Notice("论文修订已写回数据库（重新 export 后离线库更新）");
       ov.remove();
     });
   }

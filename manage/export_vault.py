@@ -421,6 +421,33 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
     return {"directions": n_dir, "researchers": n_res, "papers": 0, "events": n_ev}
 
 
+def export_papers_db(conn, out: Path, domain: str, top: int = 2000):
+    """域级离线论文库（供插件无后台读全详情）→ _db/papers_<domain>.json"""
+    dbdir = out / "_db"
+    dbdir.mkdir(parents=True, exist_ok=True)
+    rows = conn.execute(
+        """SELECT p.id, p.title, p.title_cn, p.keynote, p.abstract, p.journal, p.year,
+                  p.cited_by_count, p.pmid, p.doi, p.note, p.retraction_status
+           FROM papers p JOIN paper_domains pd ON pd.paper_id=p.id
+           WHERE pd.domain_id=? ORDER BY p.cited_by_count DESC LIMIT ?""",
+        (domain, top)).fetchall()
+    out_rows = []
+    for r in rows:
+        authors = [x["name_display"] for x in conn.execute(
+            """SELECT a.name_display FROM paper_authors pa JOIN authors a ON a.id=pa.author_id
+               WHERE pa.paper_id=? ORDER BY pa.position LIMIT 12""", (r["id"],))]
+        out_rows.append({"id": r["id"], "title": r["title"], "title_cn": r["title_cn"],
+                         "keynote": r["keynote"], "abstract": r["abstract"] or "",
+                         "journal": r["journal"], "year": r["year"],
+                         "cited": r["cited_by_count"] or 0, "pmid": r["pmid"],
+                         "doi": r["doi"], "note": r["note"],
+                         "retraction": r["retraction_status"], "authors": authors})
+    (dbdir / f"papers_{domain}.json").write_text(
+        json.dumps({"domain": domain, "count": len(out_rows), "papers": out_rows},
+                   ensure_ascii=False), encoding="utf-8")
+    print(f"[export-db] {domain}: {len(out_rows)} 篇离线论文 → _db/papers_{domain}.json")
+
+
 def export_layout(conn, out: Path, domain: str):
     """导出布局 JSON → <peopar>/_layout/<domain>.json（插件信息化方向图谱数据源）。"""
     ldir = out / "_layout"
@@ -471,6 +498,7 @@ def main():
         print(f"[export] {d}: 方向 {st['directions']} / 研究者 {st['researchers']} / "
               f"论文 {st['papers']} / 事件 {st['events']}")
         export_layout(conn, out, d)
+        export_papers_db(conn, out, d)
         md_file(out, f"{d}.peopar", {"domain": d, "type": "peopar-view", "topic": args.topic},
                 f"# 百官行述 · {d}\n\n双击以插件视图打开（大方向：{args.topic}）。")
     md_file(out, "_sync.md",

@@ -215,6 +215,25 @@ export class VaultProvider implements DataProvider {
 
   async authorTags(id: string): Promise<{ tag: string; dim: string; status: string }[]> { return []; }
 
+  private paperCache: Map<string, any> = new Map();
+  private paperLoaded = false;
+  private async loadAllPapers(): Promise<void> {
+    if (this.paperLoaded) return;
+    this.paperLoaded = true;
+    for (const f of this.app.vault.getFiles()) {
+      const m = /\/peopar\/_db\/papers_([a-z0-9_]+)\.json$/.exec(f.path);
+      if (!m) continue;
+      try {
+        const data = JSON.parse(await this.app.vault.adapter.read(f.path));
+        for (const p of (data.papers || [])) this.paperCache.set(String(p.id), p);
+      } catch { /* ignore corrupt */ }
+    }
+  }
+  async paperDetail(pid: number): Promise<any | null> {
+    await this.loadAllPapers();
+    return this.paperCache.get(String(pid)) || null;
+  }
+
   async authorSnapshot(id: string): Promise<AuthorSnapshotResp | null> {
     const f = this.file(`${this.P}/researchers/${id}.md`);
     const fm = f ? this.fm(f) : {};

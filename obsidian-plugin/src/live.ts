@@ -17,6 +17,7 @@ export class LiveProvider implements DataProvider {
   directionResearchers(cid: number) { return api<DirectionResp>(this.base + `/api/direction/${cid}/researchers`); }
   author(id: string) { return api<AuthorDetail>(this.base + `/api/author/${id}`); }
   authorTags(id: string) { return api(this.base + `/api/author/${id}/tags`); }
+  async paperDetail(pid: number) { try { return await api(this.base + `/api/paper/${pid}`); } catch { return null; } }
   authorSnapshot(id: string) {
     return api<AuthorSnapshotResp | null>(this.base + `/api/author/${id}/snapshot`).catch(() => null);
   }

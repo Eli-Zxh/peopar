@@ -71,6 +71,8 @@ def init_db(conn: sqlite3.Connection):
         conn.execute("ALTER TABLE papers ADD COLUMN abstract_override TEXT")
     if "title_cn" not in pcols:
         conn.execute("ALTER TABLE papers ADD COLUMN title_cn TEXT")
+    if "keynote" not in pcols:
+        conn.execute("ALTER TABLE papers ADD COLUMN keynote TEXT")
     # 轻量迁移：机构官网抓取信息（note / verified）
     acols = {r[1] for r in conn.execute("PRAGMA table_info(affiliations)")}
     if "note" not in acols:

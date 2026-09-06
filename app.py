@@ -277,7 +277,7 @@ class API:
         """论文详情（DB 权威；摘要显示人工覆盖优先）。"""
         r = conn.execute(
             "SELECT id, title, title_cn, year, journal, doi, pmid, openalex_id, abstract, abstract_override, "
-            "note, cited_by_count, retraction_status FROM papers WHERE id=?", (pid,)).fetchone()
+            "note, keynote, cited_by_count, retraction_status FROM papers WHERE id=?", (pid,)).fetchone()
         if not r:
             return {"error": "论文不存在"}
         out = dict(r)
@@ -297,6 +297,8 @@ class API:
             sets.append("abstract_override=?"); args.append(body.get("abstract_override"))
         if "title_cn" in body:
             sets.append("title_cn=?"); args.append(body.get("title_cn"))
+        if "keynote" in body:
+            sets.append("keynote=?"); args.append(body.get("keynote"))
         if not sets:
             return {"error": "无可更新字段（note / abstract_override）"}
         args.append(pid)
