@@ -143,6 +143,21 @@ LLM 提案裁决      python3 manage/judgment.py propose <json> | list [--status
 - 白名单：研究者 `manual_name_zh`→authors.name_zh、`manual_note`→authors.note；论文 `manual_paper_note`→papers.note；
   L0/事件/簇成员/收录等**不可**经 md 修改；结构化变更走 judgments/裁决队列
 
+## 工作流 10：新一轮内容总结（面向新人的连贯叙述 + 一句话 + 领域综述）
+
+> 目标读者：完全不了解该细分领域的研究者。核心：`narrative`（连贯小综述）为主、`keynote`（20-50字）为节点
+> 一句话；`definition/current_conclusions/timeline/controversies` 仅作结构化审查字段（不再作展示大标题）。
+
+1. **方向 narrative/keynote**：按 `prompts/cluster_snapshot.md`(v3) 重合成/补发（保留 cluster_id、keynote、narrative +
+   结构化字段 + paper 锚定）→ `python3 manage/snapshot.py apply <json> --by <署名>`
+2. **作者 keynote**：按 `prompts/author_profile.md`(v2)（含 keynote）→ `apply-authors`
+3. **论文 keynote**：按 `prompts/paper_keynote.md` 批次 → `python3 manage/keynote.py apply-papers <json>`
+   （`list-pending` 查待补规模；批次建议：图谱节点 + 被引 top → 代表/方向论文）
+4. **领域小综述笔记**（peopar 上一级，即 `<vault>/<大方向>/`）：每个大方向一篇综述，供刚接触该领域者通读；
+   agent 合成后以 `obsidian-markdown` 规范写入 `<vault>/<大方向>/领域综述.md`（引用方向 narrative/代表论文，
+   wikilink 指向 peopar 内笔记）；不写回 SQLite（作为领域级人读文档）。
+5. 全部 LLM 文本沿袭红线：锚定库内论文、无来源不写、撤稿标注；人工审阅后生效。
+
 ## 陷阱（实测踩过）
 
 - **PubMed `--full` 必须用于首次全量**：默认 `sort:pub_date` + max_fetch 会把历史论文截断（22.9 万命中只取最新 1 万）。EDAT 窗口分片（1900–今）修复；极热区间窗口命中 >9000 会继续二分。

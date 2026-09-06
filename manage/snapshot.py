@@ -60,7 +60,7 @@ def cmd_apply(args):
             continue
         content = json.dumps({k: item[k] for k in
                               ("name", "definition", "current_conclusions", "timeline",
-                               "controversies") if k in item},
+                               "controversies", "narrative", "keynote") if k in item},
                              ensure_ascii=False)
         sig = basis_signature(cp)  # 合成时刻论文集合指纹（失效感知）
         old = conn.execute("SELECT id FROM snapshots WHERE cluster_id=? ORDER BY id DESC LIMIT 1",
@@ -174,7 +174,7 @@ def cmd_apply_authors(args):
             continue
         content = json.dumps({k: item[k] for k in
                               ("focus", "summary", "key_contributions", "risks",
-                               "representative_paper_ids") if k in item},
+                               "keynote", "representative_paper_ids") if k in item},
                              ensure_ascii=False)
         sig = basis_signature(papers)
         old = conn.execute(
