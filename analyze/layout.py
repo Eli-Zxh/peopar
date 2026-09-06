@@ -189,7 +189,15 @@ def solve(domain, k=12, include_pending=False, seed=42, out_json=None):
                JOIN paper_domains pd ON pd.paper_id=pa.paper_id AND pd.domain_id=?
                WHERE ac.cluster_id=?""", (domain, cid))]
         more = [pid for pid in cluster_pids if pid not in placed and pid not in placed_global]
-        rng.shuffle(more)
+        keyed = {r[0] for r in conn.execute(
+            "SELECT id FROM papers WHERE keynote IS NOT NULL AND keynote!='' AND id IN "
+            "(SELECT paper_id FROM paper_domains WHERE domain_id=?)", (domain,)).fetchall()}
+        # keynote/中文名论文优先入图（一句话先展示）；其余随机
+        ordered = sorted(more, key=lambda pid: (pid not in keyed, -conn.execute(
+            "SELECT cited_by_count FROM papers WHERE id=?", (pid,)).fetchone()[0] or 0))
+        pool = ordered
+        rng.shuffle([p2 for p2 in pool if p2 not in keyed])
+        more = pool
         for pid in more:
             if len([n for n in nodes_paper if n.get("cluster_id") == cid]) >= N_PAPER_DISPLAY:
                 break
