@@ -60,6 +60,7 @@ export class AtlasApp {
     c.innerHTML = `
     <div class="pp-header">
       <div class="pp-title">百官行述 <span class="pp-sub">Researcher Atlas</span></div>
+      <select class="pp-topic" title="大方向工作区"></select>
       <select class="pp-domain"></select>
       <div class="pp-searchwrap"><input class="pp-q" placeholder="检索：姓名 / 论文…">
         <div class="pp-qres" style="display:none"></div></div>
@@ -143,7 +144,34 @@ export class AtlasApp {
   }
 
   // ---------- 域与方向聚合图 ----------
+  private async fillTopicSelect() {
+    const sel = this.el.querySelector(".pp-topic") as HTMLSelectElement;
+    if (!sel) return;
+    const topics = new Set<string>();
+    for (const f of this.plugin.app.vault.getFiles()) {
+      const m = /^([^/]+)\/peopar\/_sync\.md$/.exec(f.path);
+      if (m) topics.add(m[1]);
+    }
+    const cur = this.plugin.settings.topic;
+    if (!topics.has(cur)) topics.add(cur);
+    sel.innerHTML = Array.from(topics).map(t =>
+      `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+    sel.value = cur;
+    sel.onchange = async () => {
+      const v = sel.value;
+      if (v === cur) return;
+      this.plugin.settings.topic = v;
+      await this.plugin.saveData(this.plugin.settings);
+      await this.plugin.refreshProvider();
+      this.dirs = null;
+      await this.loadDomains();
+      this.renderSync();
+      new Notice(`已切换大方向：${v}`);
+    };
+  }
+
   async loadDomains(defaultDomain?: string) {
+    await this.fillTopicSelect();
     const ds = await this.provider.domains();
     const sel = this.el.querySelector(".pp-domain") as HTMLSelectElement;
     sel.innerHTML = ds.map(d => `<option value="${esc(d.id)}">${esc(d.name)}（${d.papers} 篇 / ${d.authors} 人）</option>`).join("");

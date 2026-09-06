@@ -355,16 +355,15 @@ def export_domain(conn, out: Path, domain: str, min_papers: int, top_papers: int
         body = f"# {name}\n\n"
         body += f"> [!summary] 方向概览\n> 规模 **{size}** 人 · 论文 **{st['n'] or 0}** · 近三年 **{st['recent'] or 0}** · 被引 **{st['cit'] or 0}**" + \
                 (f" · 审阅：{review}" if review else "") + "\n\n"
-        if content.get("name") or name:
-            pass
-        if content.get("current_conclusions"):
-            body += "## 🎯 当前结论\n\n> **" + content["current_conclusions"] + "**\n\n"
-        if content.get("timeline"):
-            body += "## 📜 历史进程\n\n" + arrow_timeline(content["timeline"]) + "\n\n"
+        # 连贯叙事（弱标签段落式；结构项目仅作段落内加粗短语，不做大标题）
         if content.get("definition"):
-            body += "## 📖 研究概述\n\n" + content["definition"] + "\n\n"
+            body += "**这个方向在做什么**：" + content["definition"] + "\n\n"
+        if content.get("current_conclusions"):
+            body += "**目前的研究到什么程度（结论）**：" + content["current_conclusions"] + "\n\n"
+        if content.get("timeline"):
+            body += "**它是怎么发展过来的**：\n" + arrow_timeline(content["timeline"]) + "\n\n"
         if content.get("controversies"):
-            body += "## ⚖️ 分歧与风险\n\n" + content["controversies"] + "\n\n"
+            body += "**还有什么没定论（分歧/风险）**：" + content["controversies"] + "\n\n"
         if members:
             body += "## 代表研究者\n\n"
             for aid, nm in members[:20]:
