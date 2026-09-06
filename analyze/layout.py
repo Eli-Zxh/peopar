@@ -27,7 +27,7 @@ from ingest.common import audit, connect, init_db
 R_MIN, R_MAX = 5.0, 34.0   # 论文显示半径上下界（相对画布缩放前）
 GAMMA = 0.85               # 半径分布形状
 ALPHA, BETA = 0.7, 0.3     # 被引百分位 vs 簇核心占比 权重
-R_BASE = 320.0             # 方向中心圆周半径（画布半宽基准）
+R_BASE = 265.0             # 方向中心圆周半径（画布半宽基准）
 R_DIR_MIN, R_DIR_MAX = 70.0, 190.0  # 方向区域半径上下界
 MIN_GAP = 34.0             # 方向间最小中心距余量
 HOT_ALPHA = 0.6            # 扇区角热度指数
@@ -75,12 +75,14 @@ def direction_layout(conn, domain, clusters, sim):
         acc += frac
         out[c["id"]] = [R_BASE * math.cos(2 * math.pi * theta + 0.3),
                         R_BASE * math.sin(2 * math.pi * theta + 0.3)]
-    # 区域半径：受簇规模与画布约束
-    sizes = {c["id"]: cluster_stats(conn, c["id"])[0] for c in clusters}
-    max_size = max(sizes.values()) or 1
+    # 区域半径：按论文数量（log 归一）——半径随论文数显著拉开
+    import math as _m
+    np_by = {c["id"]: cluster_stats(conn, c["id"])[1] for c in clusters}
+    mx = max(np_by.values()) or 1
     for c in clusters:
-        frac = (sizes[c["id"]] / max_size) ** 0.5
-        out[c["id"]].append(R_DIR_MIN + (R_DIR_MAX - R_DIR_MIN) * frac)
+        f = (np_by[c["id"]] / mx) ** 0.5               # √论文占比 → 直径随论文显著拉开
+        r = R_DIR_MIN + (R_DIR_MAX - R_DIR_MIN) * f
+        out[c["id"]].append(r)
     # 弹簧松弛：s 高拉近
     for _ in range(N_ITER):
         moved = 0.0
@@ -160,7 +162,7 @@ def solve(domain, k=12, include_pending=False, seed=42, out_json=None):
         size, np_, cit = cluster_stats(conn, cid)
         x, y, R = centers[cid]
         nodes_dir.append({"id": f"dir:{cid}", "cluster_id": cid, "name": c["name"], "x": x, "y": y,
-                          "r": R, "size": size, "papers": np_})
+                          "r": R, "size": size, "papers": np_, "recent": None})
         # --- 论文层：评分论文径向定位 ---
         ranked = sorted(aff.get(cid, []), key=lambda t: -cite_of.get(t[0], 0))
         tot_p = max(len(ranked), 1)

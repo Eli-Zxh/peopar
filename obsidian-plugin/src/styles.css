@@ -185,3 +185,8 @@
 .pp-live-on{color:#fff !important;background:var(--p-ok) !important}
 .pp-keynote{margin:6px 0;background:rgba(53,80,124,.08);border-left:3px solid #35507c;
   padding:6px 10px;border-radius:6px;font-size:13px;color:#243a5e}
+.pp-dot-focus{display:inline-block;width:12px;height:12px;border-radius:50%;cursor:pointer;
+  margin-right:8px;vertical-align:middle;border:1px solid rgba(0,0,0,.15);flex:none}
+.pp-dot-focus:hover{transform:scale(1.35);box-shadow:0 0 0 3px rgba(139,124,246,.25)}
+.pp-dirtext{cursor:pointer;display:inline-block;vertical-align:top}
+.pp-dirtext .pp-meta{display:block;margin-top:2px}

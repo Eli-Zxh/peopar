@@ -338,9 +338,11 @@ export class AtlasApp {
       applyView();
     };
     zr.on("wheel", (ev: any) => {
-      if (ev && ev.event && ev.event.preventDefault) ev.event.preventDefault();
-      const k = ev && (ev.event?.deltaY < 0 || ev.wheelDelta > 0) ? 1.24 : 1 / 1.24;
-      zoomCenter(k);
+      const n = ev?.event;
+      if (n && n.preventDefault) n.preventDefault();
+      const dy = (n?.deltaY ?? ev?.deltaY ?? 0) || (ev?.wheelDelta ? -ev.wheelDelta : 0);
+      if (dy === 0) return;
+      zoomCenter(Math.exp(-dy * 0.0045));   // 滚轮与触控板 pinch 统一指数缩放
     });
     const zoomCenter = (k: number) => {
       const nf = clampF(view.f * k);
@@ -459,25 +461,25 @@ export class AtlasApp {
     const unnamed = ds.filter((d: any) => !d.name);
     const item = (d: any) => `
       <div class="pp-diritem" data-cid="${d.cluster_id}">
-        <span class="pp-dot" style="background:${PALETTE[(d.label ?? d.cluster_id) % PALETTE.length]}"></span>
-        <b>${dirName(d)}</b>
-        ${d.name ? (d.snap_review === "approved" ? '<span class="pp-badge pp-b-approved">已审</span>'
-          : d.snap_review === "rejected" ? '<span class="pp-badge pp-b-rejected">驳回</span>'
-          : '<span class="pp-badge pp-b-pending">待审</span>') : ""}
-        <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${(d.top_authors || []).slice(0, 3).map((x: any) => esc(x.name)).join(" · ")}</span>
-        <span class="pp-meta"><button class="pp-btn pp-btn-ghost pp-btn-sm" data-note="${d.cluster_id}">📖</button></span>
+        <span class="pp-dot-focus" style="background:${PALETTE[(d.label ?? d.cluster_id) % PALETTE.length]}" data-focus="${d.cluster_id}" title="图谱聚焦该方向"></span>
+        <span class="pp-dirtext" data-open-note="${d.cluster_id}">
+          <b>${dirName(d)}</b>
+          ${d.name ? (d.snap_review === "approved" ? '<span class="pp-badge pp-b-approved">已审</span>'
+            : d.snap_review === "rejected" ? '<span class="pp-badge pp-b-rejected">驳回</span>'
+            : '<span class="pp-badge pp-b-pending">待审</span>') : ""}
+          <span class="pp-meta">${d.size} 人 · ${d.recent} 近文 · ${(d.top_authors || []).slice(0, 3).map((x: any) => esc(x.name)).join(" · ")}</span>
+        </span>
       </div>`;
-    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（点击在图谱聚焦放大 · 📖 看笔记）</span></div>` +
+    box.innerHTML = `<div class="pp-card-title">研究方向<span class="pp-meta">（●点击色点=图谱聚焦 · 点文字=看笔记）</span></div>` +
       (named.length ? named.map(item).join("") : "") +
       (unnamed.length ? `<details class="pp-unamed"><summary class="pp-meta">未命名方向（${unnamed.length}）</summary>${unnamed.map(item).join("")}</details>` : "");
-    box.querySelectorAll(".pp-diritem").forEach((el) => el.addEventListener("click", (ev) => {
-      const cid = +(el as HTMLElement).dataset.cid!;
-      if ((ev.target as HTMLElement).closest("[data-note]")) { this.openDirection(cid); return; }
-      this._graphCtl?.zoomToDir(cid);
-    }));
-    box.querySelectorAll("[data-note]").forEach((b) => b.addEventListener("click", (ev) => {
+    box.querySelectorAll("[data-focus]").forEach((b) => b.addEventListener("click", (ev) => {
       ev.stopPropagation();
-      this.openDirection(+(b as HTMLElement).dataset.note!);
+      this._graphCtl?.zoomToDir(+(b as HTMLElement).dataset.focus!);
+    }));
+    box.querySelectorAll("[data-open-note]").forEach((b) => b.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      this.openDirection(+(b as HTMLElement).dataset.openNote!);
     }));
   }
 
