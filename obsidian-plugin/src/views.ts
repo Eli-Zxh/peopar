@@ -337,14 +337,8 @@ export class AtlasApp {
       if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
       applyView();
     };
-    zr.on("wheel", (ev: any) => {
-      const n = ev?.event;
-      if (n && n.preventDefault) n.preventDefault();
-      const dy = (n?.deltaY ?? ev?.deltaY ?? 0) || (ev?.wheelDelta ? -ev.wheelDelta : 0);
-      if (dy === 0) return;
-      zoomCenter(Math.exp(-dy * 0.0045));   // 滚轮与触控板 pinch 统一指数缩放
-    });
-    const zoomCenter = (k: number) => {
+    // 缩放：DOM 原生 wheel 监听（capture + passive:false）——避免 zrender/页面滚动冲突
+    function zoomCenter(k: number) {
       const nf = clampF(view.f * k);
       k = nf / view.f; view.f = nf;
       const cx = (view.x0 + view.x1) / 2, cy = (view.y0 + view.y1) / 2;
@@ -354,7 +348,16 @@ export class AtlasApp {
       if (view.x1 - view.x0 > W0 * 2) { view.x0 = X0; view.x1 = X1; }
       if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
       applyView();
-    };
+    }
+    const domNode = chart.getDom();
+    domNode.addEventListener("wheel", (ev: WheelEvent) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      const dy = ev.deltaY !== 0 ? ev.deltaY : (ev.deltaMode === 0 ? 0 : ev.deltaMode * 40);
+      if (!dy) return;
+      zoomCenter(Math.exp(-dy * 0.0045));
+    }, { passive: false, capture: true });
+    domNode.addEventListener("mouseleave", () => { panning = false; });
     zr.on("mousedown", (ev: any) => { panning = true; moved = 0; px = ev.offsetX; py = ev.offsetY; });
     zr.on("mousemove", (ev: any) => {
       if (!panning) return;
