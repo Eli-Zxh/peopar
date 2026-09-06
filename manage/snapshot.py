@@ -211,6 +211,38 @@ def cmd_apply_authors(args):
         raise SystemExit(1)
 
 
+def cmd_patch_narrative(args):
+    """把 narrative/keynote 合并进现有方向快照 content（保留结构化四字段与 evidence，不重建 supersede）。"""
+    doc = json.loads(Path(args.json).read_text(encoding="utf-8"))
+    conn = connect(); init_db(conn)
+    actor = f"user:{args.by}" if args.by else "agent"
+    ok, fail = 0, []
+    for it in doc.get("snapshots", []):
+        cid = it["cluster_id"]
+        s = conn.execute(
+            """SELECT id, content FROM snapshots WHERE cluster_id=? AND status!='superseded'
+               ORDER BY id DESC LIMIT 1""", (cid,)).fetchone()
+        if not s:
+            fail.append({"cluster_id": cid, "reason": "无活动快照"}); continue
+        try:
+            content = json.loads(s["content"])
+        except json.JSONDecodeError:
+            content = {}
+        for k in ("keynote", "narrative"):
+            if k in it and it[k]:
+                content[k] = it[k]
+        conn.execute("UPDATE snapshots SET content=?, model=COALESCE(model,'')||' |narr-patch' WHERE id=?",
+                     (json.dumps(content, ensure_ascii=False), s["id"]))
+        audit(conn, actor, "snapshot.narr_patch", "cluster", cid, {"keys": list(it.keys())})
+        ok += 1
+    conn.commit()
+    print(f"[patch-narrative] 合并 {ok} 条，失败 {len(fail)}")
+    for f in fail:
+        print(" ⚠", f)
+    if fail:
+        raise SystemExit(1)
+
+
 def cmd_staleness(args):
     """失效感知：active 快照的论文集合指纹与当前不一致 → affected_pending_review。不自动重合成。"""
     conn = connect()
@@ -316,10 +348,13 @@ if __name__ == "__main__":
     p2c.add_argument("domain")
     p3 = sub.add_parser("list")
     p3.add_argument("domain", nargs="?")
+    p3b = sub.add_parser("patch-narrative", help="合并 narrative/keynote 到现有方向快照")
+    p3b.add_argument("json"); p3b.add_argument("--by")
     p4 = sub.add_parser("review", help="人工审阅")
     p4.add_argument("id", type=int)
     p4.add_argument("action")
     p4.add_argument("--by", required=True)
     args = ap.parse_args()
     {"apply": cmd_apply, "note": cmd_note, "apply-authors": cmd_apply_authors,
+     "patch-narrative": cmd_patch_narrative,
      "staleness": cmd_staleness, "list": cmd_list, "review": cmd_review}[args.cmd](args)

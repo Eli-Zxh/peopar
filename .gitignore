@@ -23,3 +23,12 @@ data/layout_*_preview.json
 data/dir_snap_*.json
 data/author_snap_*.json
 data/layout_*.json
+data/领域综述-*.md
+data/nl_dir_narr_*.json
+data/ad_auth_key_*.json
+data/ad_key_part_*.json
+data/ad_key_out_*.json
+data/ad_pilot_*.json
+data/nl_dir_input.json
+data/ad_core_*.json
+data/ad_pilot_papers.json
