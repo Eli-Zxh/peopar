@@ -223,7 +223,7 @@ export class AtlasApp {
     X0 -= PAD; X1 += PAD; Y0 -= PAD; Y1 += PAD;
     const W0 = X1 - X0, H0 = Y1 - Y0;
     const baseDir = (d: any) => Math.max(56, Math.min(200, d.r * 2 * (330 / Math.max(W0, 1)) * 0.6));
-    const basePaper = (p: any) => Math.max(3.4, Math.min(8.5, 2.2 + (p.r - 5) * 0.17));
+    const basePaper = (p: any) => Math.max(4.6, Math.min(10, 2.6 + (p.r - 5) * 0.19));
     const baseAuthor = (a: any) => Math.max(9, Math.min(19, a.r * 0.85));
     let view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 };
     const dirNodes = g.directions.map((d: any) => ({
@@ -270,24 +270,36 @@ export class AtlasApp {
         lineStyle: { color: "#948ac2", width: 1, opacity: 0.6 } },
       { name: "跨方向关联", type: "lines", data: lines.crossdir, z: 3, silent: true,
         lineStyle: { color: "#d24d4d", width: 1.9, type: "dashed" } },
-      { name: "论文", type: "scatter", data: paperNodes, z: 4,
+      { name: "论文", type: "scatter", data: paperNodes, z: 4, cursor: "pointer",
+        emphasis: { scale: 1.7 },
         symbolSize: (v: any, p: any) => basePaper(paperNodes[p.dataIndex]._p) * Math.max(1, Math.min(4, view.f)),
         label: { show: view.f >= 3, color: "#4c4560", fontSize: 8.6 },
         labelLayout: { hideOverlap: true } },
-      { name: "研究者", type: "scatter", data: authorNodes, z: 5,
+      { name: "研究者", type: "scatter", data: authorNodes, z: 5, cursor: "pointer",
+        emphasis: { scale: 1.5 },
         symbolSize: (v: any, p: any) => baseAuthor(authorNodes[p.dataIndex]._a) * Math.max(1, Math.min(3, view.f)),
         label: { show: view.f >= 1.6, fontSize: 9, color: "#2e2942" },
         labelLayout: { hideOverlap: true } },
     ];
-    const applyView = () => {
-      chart.setOption({
-        xAxis: { min: view.x0, max: view.x1 },
-        yAxis: { min: view.y0, max: view.y1 },
-        series: seriesDefs() as any,
-      });
+    let rafId = 0;
+    const schedule = (fn: () => void) => {
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => { rafId = 0; fn(); });
+    };
+    const applyAxis = () => {
+      chart.setOption({ xAxis: { min: view.x0, max: view.x1 }, yAxis: { min: view.y0, max: view.y1 } });
+    };
+    const applyView = (needSeries: boolean) => {
+      if (needSeries) {
+        schedule(() => chart.setOption({
+          xAxis: { min: view.x0, max: view.x1 }, yAxis: { min: view.y0, max: view.y1 },
+          series: seriesDefs() as any }));
+      } else {
+        schedule(applyAxis);
+      }
     };
     const baseOpt = {
-      tooltip: { confine: true, formatter: (p: any) => {
+      tooltip: { confine: true, showDelay: 60, hideDelay: 40, formatter: (p: any) => {
         const si = p.seriesIndex;
         if (si === 5) {
           const a = authorNodes[p.dataIndex]?._a;
@@ -335,7 +347,7 @@ export class AtlasApp {
       view.y0 = my - (my - view.y0) / k; view.y1 = my + (view.y1 - my) / k;
       if (view.x1 - view.x0 > W0 * 2) { view.x0 = X0; view.x1 = X1; }
       if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
-      applyView();
+      schedule(() => { chart.setOption({ xAxis: { min: view.x0, max: view.x1 }, yAxis: { min: view.y0, max: view.y1 }, series: seriesDefs() as any }); });
     };
     // 缩放：DOM 原生 wheel 监听（capture + passive:false）——避免 zrender/页面滚动冲突
     function zoomCenter(k: number) {
@@ -347,7 +359,7 @@ export class AtlasApp {
       view.y0 = cy - h2; view.y1 = cy + h2;
       if (view.x1 - view.x0 > W0 * 2) { view.x0 = X0; view.x1 = X1; }
       if (view.y1 - view.y0 > H0 * 2) { view.y0 = Y0; view.y1 = Y1; }
-      applyView();
+      schedule(() => { chart.setOption({ xAxis: { min: view.x0, max: view.x1 }, yAxis: { min: view.y0, max: view.y1 }, series: seriesDefs() as any }); });
     }
     const domNode = chart.getDom();
     domNode.addEventListener("wheel", (ev: WheelEvent) => {
@@ -362,18 +374,20 @@ export class AtlasApp {
     zr.on("mousemove", (ev: any) => {
       if (!panning) return;
       const dx = ev.offsetX - px, dy = ev.offsetY - py;
+      if (dx === 0 && dy === 0) return;
       moved += Math.abs(dx) + Math.abs(dy);
       const rect = chart.getDom().getBoundingClientRect();
       const sx = (view.x1 - view.x0) / rect.width, sy = (view.y1 - view.y0) / rect.height;
-      view.x0 -= dx * sx; view.x1 -= dx * sx;
+      // 滚动式平移：拖右看右侧（x 同向），拖下看下方（y 数值轴向下为小值 → 反号）
+      view.x0 += dx * sx; view.x1 += dx * sx;
       view.y0 -= dy * sy; view.y1 -= dy * sy;
       px = ev.offsetX; py = ev.offsetY;
-      applyView();
+      schedule(applyAxis);
     });
     const stopPan = () => { panning = false; };
     zr.on("mouseup", stopPan);
     (zr as any).on?.("mouseout", stopPan);
-    chart.on("dblclick", () => { view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 }; activeDir = null; lines = mkLines(); applyView(); });
+    chart.on("dblclick", () => { view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 }; activeDir = null; lines = mkLines(); applyView(true); });
     chart.on("click", (p: any) => {
       if (moved > 6) { moved = 0; return; }   // 拖动后不触发点击
       if (p.seriesIndex === 5) {
@@ -385,7 +399,7 @@ export class AtlasApp {
         if (pid) this.openPaper(pid);
       } else if (p.seriesIndex === 0) {
         const d = dirNodes[p.dataIndex]?._d;
-        if (d) { activeDir = activeDir === d.cluster_id ? null : d.cluster_id; lines = mkLines(); applyView(); }
+        if (d) { activeDir = activeDir === d.cluster_id ? null : d.cluster_id; lines = mkLines(); applyView(true); }
       }
     });
     // 聚焦某方向（左侧簇信息点击 / 图谱需要时）：视口放大到该方向
@@ -397,8 +411,8 @@ export class AtlasApp {
       view = { x0: d.x - r, x1: d.x + r, y0: d.y - r, y1: d.y + r, f: view.f };
       if (view.x1 - view.x0 >= W0) view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 };
       view.f = W0 / (view.x1 - view.x0);
-      applyView();
-    }, resetView: () => { view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 }; activeDir = null; lines = mkLines(); applyView(); } };
+      applyView(true);
+    }, resetView: () => { view = { x0: X0, x1: X1, y0: Y0, y1: Y1, f: 1 }; activeDir = null; lines = mkLines(); applyView(true); } };
   }
 
   /** 论文页：标题(别名/一句话)/摘要/笔记/作者/方向；离线库或实时均可展示，编辑需实时服务 */
@@ -413,6 +427,7 @@ export class AtlasApp {
         cited: hit.cite, pmid: hit.pmid || null, note: hit.note || "", affinity: hit.affinity, authors: [] };
     }
     if (!d) { new Notice("该论文详情不在离线库（启用实时服务可获取）"); return; }
+    new Notice("加载论文…", 500);
     const ov = (this.el.querySelector(".pp-main") as HTMLElement).createEl("div", { cls: "pp-overlay" });
     const card = ov.createEl("div", { cls: "pp-card pp-paper-panel" });
     const editHtml = this.live ? `
